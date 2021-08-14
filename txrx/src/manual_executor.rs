@@ -1,7 +1,7 @@
-use std::sync::{Mutex, Arc, Condvar};
-use std::collections::VecDeque;
 use crate::traits::{Connection, Receiver};
-use crate::ImmediateExecutor;
+use std::collections::VecDeque;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::Duration;
 
 type QueueType = VecDeque<Box<dyn FnOnce() + Send>>;
 
@@ -13,7 +13,7 @@ struct Inner {
 impl Inner {
     pub fn new() -> Self {
         Self {
-            queue: Mutex::new(QueueType::new()),
+            queue: Mutex::new(QueueType::with_capacity(256)),
             cond_var: Condvar::new(),
         }
     }
@@ -28,28 +28,51 @@ impl Inner {
 
     pub fn run_one(&self) -> bool {
         let to_run = {
+            let mut guard = self.queue.lock().unwrap();
+            if !guard.is_empty() {
+                guard.pop_front()
+            }
+            else {
+                let mut guard = self.cond_var.wait_while(guard, |x| x.is_empty()).unwrap();
+                guard.pop_front()
+            }
+        };
+
+        if let Some(to_run) = to_run {
+            to_run();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn run_one_for(&self, timeout: Duration) -> bool {
+        let to_run = {
             let guard = self.queue.lock().unwrap();
-            let mut guard = self.cond_var.wait_while(guard, |x| x.is_empty()).unwrap();
+            let (mut guard, _) = self
+                .cond_var
+                .wait_timeout_while(guard, timeout, |x| x.is_empty())
+                .unwrap();
+            if guard.is_empty() {
+                return false;
+            }
             guard.pop_front()
         };
 
         if let Some(to_run) = to_run {
             to_run();
             true
-        }
-        else {
+        } else {
             false
         }
     }
 }
 
-pub struct ManualExecutor
-{
-    inner: Arc<Inner>
+pub struct ManualExecutor {
+    inner: Arc<Inner>,
 }
 
-impl ManualExecutor
-{
+impl ManualExecutor {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Inner::new()),
@@ -58,13 +81,13 @@ impl ManualExecutor
 
     pub fn scheduler(&self) -> Scheduler {
         Scheduler {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 
     pub fn runner(&self) -> Runner {
         Runner {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -78,19 +101,22 @@ impl Runner {
     pub fn run_one(&self) -> bool {
         self.inner.run_one()
     }
+
+    pub fn run_one_for(&self, timeout: Duration) -> bool {
+        self.inner.run_one_for(timeout)
+    }
 }
 
 pub struct ScheduledSender {
-    inner: Arc<Inner>
+    inner: Arc<Inner>,
 }
 
 impl crate::traits::Sender for ScheduledSender {
     type Output = ();
     type Error = ();
-    type Scheduler = ImmediateExecutor;
 }
 
-impl<R: 'static + Send + Receiver<Input=()>> crate::traits::SenderFor<R> for ScheduledSender {
+impl<R: 'static + Send + Receiver<Input = ()>> crate::traits::SenderFor<R> for ScheduledSender {
     type Connection = Connected<R>;
 
     fn connect(self, receiver: R) -> Self::Connection {
@@ -101,14 +127,12 @@ impl<R: 'static + Send + Receiver<Input=()>> crate::traits::SenderFor<R> for Sch
     }
 }
 
-pub struct Connected<R>
-{
+pub struct Connected<R> {
     receiver: Box<R>,
-    queue: Arc<Inner>
+    queue: Arc<Inner>,
 }
 
-impl<R: 'static + Send + Receiver<Input=()>>  Connection for Connected<R>
-{
+impl<R: 'static + Send + Receiver<Input = ()>> Connection for Connected<R> {
     fn start(self) {
         let receiver = self.receiver;
         self.queue.add(move || {
@@ -117,8 +141,8 @@ impl<R: 'static + Send + Receiver<Input=()>>  Connection for Connected<R>
     }
 }
 
-pub struct Scheduler
-{
+#[derive(Clone)]
+pub struct Scheduler {
     inner: Arc<Inner>,
 }
 
@@ -127,7 +151,7 @@ impl crate::traits::Scheduler for Scheduler {
 
     fn schedule(&mut self) -> Self::Sender {
         ScheduledSender {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }

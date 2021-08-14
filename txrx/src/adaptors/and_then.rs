@@ -1,57 +1,49 @@
-use crate::traits::{Sender, SenderFor, Receiver, Connection};
+use crate::traits::{Connection, Receiver, Sender, SenderFor};
 use std::marker::PhantomData;
-use crate::ImmediateExecutor;
 
-pub struct AndThen<Input, Func>
-{
+pub struct AndThen<Input, Func> {
     input: Input,
     func: Func,
 }
 
-impl<Input, Func> AndThen<Input, Func>
-{
+impl<Input, Func> AndThen<Input, Func> {
     pub fn new(input: Input, func: Func) -> Self {
-        Self {
-            input,
-            func
-        }
+        Self { input, func }
     }
 }
 
 impl<NextSender, Input, Func> Sender for AndThen<Input, Func>
 where
-    NextSender: Sender<Error=Input::Error>,
+    NextSender: Sender<Error = Input::Error>,
     Input: Sender,
-    Func: FnOnce(Input::Output) -> NextSender
+    Func: FnOnce(Input::Output) -> NextSender,
 {
     type Output = NextSender::Output;
     type Error = NextSender::Error;
-    type Scheduler = ImmediateExecutor;
 }
 
 impl<NextSender, Input, Func, Recv> SenderFor<Recv> for AndThen<Input, Func>
 where
-    Recv: Receiver<Input=NextSender::Output, Error=NextSender::Error>,
-    NextSender: Sender<Error=Input::Error> + SenderFor<Recv>,
+    Recv: Receiver<Input = NextSender::Output, Error = NextSender::Error>,
+    NextSender: Sender<Error = Input::Error> + SenderFor<Recv>,
     Input: SenderFor<AndThenReceiver<<Input as Sender>::Output, Func, Recv>>,
-    Func: FnOnce(Input::Output) -> NextSender
+    Func: FnOnce(Input::Output) -> NextSender,
 {
     type Connection = Input::Connection;
 
     fn connect(self, receiver: Recv) -> Self::Connection {
-        self.input.connect(AndThenReceiver::new(self.func, receiver))
+        self.input
+            .connect(AndThenReceiver::new(self.func, receiver))
     }
 }
 
-pub struct AndThenReceiver<Input, Func, NextReceiver>
-{
+pub struct AndThenReceiver<Input, Func, NextReceiver> {
     next: NextReceiver,
     func: Func,
     _ph: PhantomData<Input>,
 }
 
-impl<Input, Func, NextReceiver> AndThenReceiver<Input, Func, NextReceiver>
-{
+impl<Input, Func, NextReceiver> AndThenReceiver<Input, Func, NextReceiver> {
     fn new(func: Func, next: NextReceiver) -> Self {
         Self {
             next,
@@ -63,7 +55,7 @@ impl<Input, Func, NextReceiver> AndThenReceiver<Input, Func, NextReceiver>
 
 impl<Input, Func, NextReceiver, Ret> Receiver for AndThenReceiver<Input, Func, NextReceiver>
 where
-    NextReceiver: Receiver<Input=Ret::Output>,
+    NextReceiver: Receiver<Input = Ret::Output>,
     Func: FnOnce(Input) -> Ret,
     Ret: SenderFor<NextReceiver>,
 {

@@ -6,8 +6,7 @@ pub use sender::SenderFor;
 pub use sender_ext::SenderExt;
 
 mod connection;
-mod sender;
 mod receiver;
 mod scheduler;
+mod sender;
 mod sender_ext;
-

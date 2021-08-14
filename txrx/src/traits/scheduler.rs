@@ -1,8 +1,7 @@
-use crate::traits::{Sender, SenderFor, Connection, Receiver};
+use crate::traits::{Connection, Receiver, Sender, SenderFor};
 use std::marker::PhantomData;
 
-pub trait Scheduler
-{
+pub trait Scheduler {
     type Sender: Sender;
     fn schedule(&mut self) -> Self::Sender;
 }
@@ -11,8 +10,7 @@ pub trait Work {
     fn execute(self);
 }
 
-pub trait WorkExecutor<W: Work>: Scheduler
-{
+pub trait WorkExecutor<W: Work>: Scheduler {
     fn execute(&mut self, work: W);
 }
 
@@ -23,10 +21,10 @@ impl<T: FnOnce()> Work for T {
 }
 
 impl<Sched, W> WorkExecutor<W> for Sched
-    where
-        Sched: Scheduler,
-        W: Work,
-        Sched::Sender: SenderFor<ExecuteReceiver<Sched::Sender, W>>
+where
+    Sched: Scheduler,
+    W: Work,
+    Sched::Sender: SenderFor<ExecuteReceiver<Sched::Sender, W>>,
 {
     fn execute(&mut self, work: W) {
         let conn = self.schedule().connect(ExecuteReceiver::new(work));
@@ -39,8 +37,7 @@ pub struct ExecuteReceiver<S, W> {
     work: W,
 }
 
-impl<S, W> ExecuteReceiver<S, W>
-{
+impl<S, W> ExecuteReceiver<S, W> {
     fn new(work: W) -> Self {
         Self {
             _phantom: PhantomData,
@@ -57,10 +54,7 @@ impl<S: Sender, W: Work> Receiver for ExecuteReceiver<S, W> {
         self.work.execute();
     }
 
-    fn set_error(self, _error: Self::Error) {
-    }
+    fn set_error(self, _error: Self::Error) {}
 
-    fn set_cancelled(self) {
-    }
+    fn set_cancelled(self) {}
 }
-

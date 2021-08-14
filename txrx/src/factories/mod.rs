@@ -1,5 +1,5 @@
-pub mod just;
 pub mod done;
+pub mod just;
 pub mod on;
 
 pub fn just<T>(value: T) -> just::Just<T> {
@@ -9,4 +9,3 @@ pub fn just<T>(value: T) -> just::Just<T> {
 pub fn done() -> done::Done {
     done::Done
 }
-

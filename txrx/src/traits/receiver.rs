@@ -1,7 +1,4 @@
-
-
-pub trait Receiver
-{
+pub trait Receiver {
     type Input;
     type Error;
 
