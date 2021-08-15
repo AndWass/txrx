@@ -1,5 +1,6 @@
-use crate::traits::{Receiver, Scheduler, Sender, SenderFor};
+use crate::traits::{Receiver, Scheduler, Sender};
 
+#[derive(Copy, Clone)]
 pub struct ImmediateScheduler;
 
 impl Scheduler for ImmediateScheduler {
@@ -13,22 +14,11 @@ impl Scheduler for ImmediateScheduler {
 impl Sender for ImmediateScheduler {
     type Output = ();
     type Error = ();
-}
 
-impl<R: Receiver<Input = (), Error = ()>> SenderFor<R> for ImmediateScheduler {
-    type Connection = Connection<R>;
-
-    fn connect(self, receiver: R) -> Self::Connection {
-        Self::Connection { receiver }
-    }
-}
-
-pub struct Connection<R> {
-    receiver: R,
-}
-
-impl<R: Receiver<Input = (), Error = ()>> crate::traits::Connection for Connection<R> {
-    fn start(self) {
-        self.receiver.set_value(());
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
+        receiver.set_value(());
     }
 }

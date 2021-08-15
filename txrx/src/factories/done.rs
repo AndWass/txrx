@@ -1,28 +1,15 @@
-use crate::traits::{Connection, Receiver, Sender, SenderFor};
+use crate::traits::{Receiver, Sender};
 
 pub struct Done;
 
 impl Sender for Done {
     type Output = ();
     type Error = ();
-}
 
-impl<R: Receiver<Input = ()>> SenderFor<R> for Done {
-    type Connection = DoneConnection<R>;
-
-    fn connect(self, receiver: R) -> Self::Connection {
-        Self::Connection { next: receiver }
-    }
-}
-
-pub struct DoneConnection<R> {
-    next: R,
-}
-
-impl<R> Unpin for DoneConnection<R> {}
-
-impl<R: Receiver> Connection for DoneConnection<R> {
-    fn start(self) {
-        self.next.set_cancelled();
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
+        receiver.set_cancelled();
     }
 }

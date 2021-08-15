@@ -1,5 +1,6 @@
-use crate::traits::{Connection, Receiver, Sender, SenderFor};
-use std::sync::{Arc, Mutex};
+use crate::traits::{Receiver, Sender};
+use std::sync::Arc;
+use crate::priv_sync::Mutex;
 
 enum ReceiverInput<T, E> {
     Value(T),
@@ -29,41 +30,43 @@ impl<S: Sender> Receiver for FutureReceiver<S> {
     type Error = S::Error;
 
     fn set_value(self, value: Self::Input) {
-        let mut lock = self.promise.lock().unwrap();
+        let mut lock = self.promise.lock();
         lock.result = Some(ReceiverInput::Value(value));
     }
 
     fn set_error(self, error: Self::Error) {
-        let mut lock = self.promise.lock().unwrap();
+        let mut lock = self.promise.lock();
         lock.result = Some(ReceiverInput::Error(error));
     }
 
     fn set_cancelled(self) {
-        let mut lock = self.promise.lock().unwrap();
+        let mut lock = self.promise.lock();
         lock.result = Some(ReceiverInput::Cancelled);
     }
 }
 
-pub struct Future<S: 'static + Sender> {
+pub struct Future<S: Sender> {
     promise: Arc<Mutex<Promise<S>>>,
 }
 
-impl<S: 'static + SenderFor<FutureReceiver<S>>> Future<S> {
+impl<S: 'static + Sender> Future<S> {
+    #[inline]
     pub fn new(sender: S) -> Self {
         let promise = Arc::new(Mutex::new(Promise::new()));
         let receiver = FutureReceiver {
             promise: promise.clone(),
         };
-        sender.connect(receiver).start();
+        sender.start(receiver);
         Self { promise }
     }
 
+    #[inline]
     pub fn is_complete(&self) -> bool {
-        self.promise.lock().unwrap().result.is_some()
+        self.promise.lock().result.is_some()
     }
 
     pub fn try_get(&self) -> Option<Result<Option<S::Output>, S::Error>> {
-        let mut lock = self.promise.lock().unwrap();
+        let mut lock = self.promise.lock();
         if let Some(x) = lock.result.take() {
             match x {
                 ReceiverInput::Value(v) => Some(Ok(Some(v))),

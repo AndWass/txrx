@@ -1,10 +1,14 @@
-use txrx::traits::Scheduler;
-use txrx::SenderExt;
+use txrx_rayon::rayon::ThreadPoolBuilder;
+
+use std::sync::Arc;
+use txrx::traits::{Sender};
+use txrx::{SenderExt};
 
 #[derive(Clone)]
 struct MutView<F> {
     pointer: *mut F,
     len: usize,
+    keep_alive: Option<Arc<Box<[F]>>>,
 }
 
 unsafe impl<F: Send> Send for MutView<F> {}
@@ -15,15 +19,22 @@ impl<F> MutView<F> {
         Self {
             len,
             pointer: slice.as_mut_ptr(),
+            keep_alive: None,
+        }
+    }
+
+    pub fn from_box(mut data: Box<[F]>) -> Self {
+        let len = data.len();
+        let pointer = data.as_mut_ptr();
+        Self {
+            len,
+            pointer,
+            keep_alive: Some(Arc::new(data)),
         }
     }
 
     unsafe fn as_subslice_mut<'a>(&mut self, offset: usize, len: usize) -> &'a mut [F] {
         std::slice::from_raw_parts_mut(self.pointer.add(offset), len)
-    }
-
-    unsafe fn as_subslice<'a>(&self, offset: usize, len: usize) -> &'a [F] {
-        std::slice::from_raw_parts(self.pointer.add(offset), len)
     }
 
     fn as_slice_mut<'a>(&mut self) -> &'a mut [F] {
@@ -35,97 +46,98 @@ impl<F> MutView<F> {
     }
 }
 
-fn inplace_inclusive_scan(in_out: &mut [f64]) {
-    if in_out.len() > 1 {
-        let mut sum = in_out[0];
-        for x in &mut in_out[1..] {
-            let old = *x;
-            *x = sum + *x;
-            sum = sum + old;
-        }
-    }
+#[inline]
+fn inplace_inclusive_scan(in_out: &mut [i64]) {
+    in_out.iter_mut().fold(0i64, |acc, elem| {
+        let old = *elem;
+        *elem = acc + *elem;
+        acc + old
+    });
 }
 
+unsafe fn into_static<'a, T: ?Sized>(s: &'a T) -> &'static T {
+    std::mem::transmute(s)
+}
+
+#[inline]
 fn inclusive_scan(
-    mut scheduler: txrx::manual_executor::Scheduler,
-    input: &mut Vec<f64>,
+    scheduler: impl txrx::traits::Scheduler + Clone + Send + 'static,
+    input: &[i64],
+    output: &mut [i64],
     tile_count: usize,
-    init: f64,
-) {
+    init: i64,
+) -> impl Sender {
     let input_size = input.len();
     let tile_size = (input.len() + tile_count - 1) / tile_count;
+
     let mut partials = Vec::new();
-    partials.resize(tile_count + 1, 0.0);
+    partials.resize(tile_count + 1, 0i64);
     partials[0] = init;
 
-    let partials_view = MutView::new(partials.as_mut_slice());
-    let input_view = MutView::new(input.as_mut_slice());
+    let partials = MutView::from_box(partials.into_boxed_slice());
+    let input = unsafe { into_static(input) };
+    let output = MutView::new(output);
 
-    txrx::factories::just((partials_view, input_view))
+    txrx::factories::just((partials, input, output))
         .bulk(
             scheduler.clone(),
             tile_count,
-            move |i, (mut partials, mut input)| {
+            move |i, (mut partials, input, mut output)| {
                 let start = i * tile_size;
                 let end = input_size.min((i + 1) * tile_size);
                 if end > start {
                     unsafe {
-                        let input = input.as_subslice_mut(start, end - start);
-                        inplace_inclusive_scan(input);
-                        partials.as_subslice_mut(i + 1, 1)[0] = input[input.len() - 1];
+                        let input = &input[start..end];
+                        let out_data = output.as_subslice_mut(start, end-start);
+                        input.iter().scan(0i64, |acc, e| {
+                            let old = *e;
+                            let ret = *acc + *e;
+                            *acc = *acc + old;
+                            Some(ret)
+                        }).enumerate().for_each(|(index, value)| {
+                            out_data[index] = value;
+                        });
+                        partials.as_subslice_mut(i + 1, 1)[0] = out_data[out_data.len() - 1];
                     }
                 }
             },
         )
-        .map(move |(mut p, input)| {
+        .map(move |(mut p, _input, output)| {
             let partials = p.as_slice_mut();
             inplace_inclusive_scan(partials);
-            (p, input)
+            (p, output)
         })
         .bulk(
             scheduler.clone(),
             tile_count,
-            move |i, (partials, mut input)| {
+            move |i, (partials, mut output)| {
                 let start = i * tile_size;
                 let end = input_size.min((i + 1) * tile_size);
                 if end > start {
-                    let output = unsafe { input.as_subslice_mut(start, end - start) };
+                    let output = unsafe { output.as_subslice_mut(start, end-start) };
                     let my_partial = partials.as_slice()[i];
-                    for x in output {
+                    output.iter_mut().for_each(|x| {
                         *x = my_partial + *x;
-                    }
+                    });
                 }
             },
         )
-        .sync_wait();
 }
 
-fn start_runners(amount: usize, runner: txrx::manual_executor::Runner) {
-    for _ in 0..amount {
-        let r = runner.clone();
-        std::thread::spawn(move || loop {
-            r.run_one();
-        });
-    }
+fn run_iter(data: &mut Vec<i64>) -> (i64, i64) {
+    inplace_inclusive_scan(data.as_mut_slice());
+    (*data.first().unwrap(), *data.last().unwrap())
 }
 
-fn run_iter(data: &Vec<f64>) -> f64 {
-    data.iter()
-        .scan(0., |acc, e| {
-            *acc += e;
-            Some(*acc)
-        })
-        .last()
-        .unwrap()
-}
-
-fn make_data() -> Vec<f64> {
-    let mut ret = Vec::new();
-    for x in 0..5_000_000_00u64 {
-        ret.push((x as f64) * 3.14);
+fn make_data() -> Vec<i64> {
+    const CAPACITY: usize = 1_000_000;
+    let mut ret = Vec::with_capacity(CAPACITY);
+    for _ in 0..std::env::args().len() {
+        for x in 0..CAPACITY {
+            ret.push((x as i64) * 2);
+        }
     }
     ret
-    //vec![1., 2., 3., 4., 5., 6., 7., 8.]
 }
 
 fn start_timing() -> std::time::Instant {
@@ -138,26 +150,28 @@ fn end_timing(instant: std::time::Instant) {
 }
 
 fn main() {
-    let executor = txrx::manual_executor::ManualExecutor::new();
-    start_runners(8, executor.runner());
+    let pool = Arc::new(ThreadPoolBuilder::new().num_threads(8).build().unwrap());
+    let scheduler = txrx_rayon::PoolScheduler::new(pool);
 
     let mut data = make_data();
+    let data2 = data.clone();
+
+    println!("sum: {}", data.iter().sum::<i64>());
 
     println!("Iter scan:");
     let timing = start_timing();
-    let result = run_iter(&data);
+    let result = run_iter(&mut data);
     end_timing(timing);
 
-    println!("Iter result: {}", result);
+    println!("Iter result: {:?}", result);
+
+    println!("sum2: {}", data2.iter().sum::<i64>());
+    let mut data2_out = Vec::with_capacity(data2.len());
+    unsafe { data2_out.set_len(data2.len()) };
 
     println!("txrx scan:");
-    let timer = start_timing();
-    inclusive_scan(executor.scheduler(), &mut data, 8, 0.);
-    end_timing(timer);
-    println!("Result: {}", data.last().unwrap());
-    /*print!("After inclusive scan:\n[ ");
-    for x in &data {
-        print!("{} ", x);
-    }
-    println!("] ");*/
+    let timing = start_timing();
+    inclusive_scan(scheduler, data2.as_slice(), data2_out.as_mut_slice(), 8, 0).sync_wait();
+    end_timing(timing);
+    println!("Result: {}", data2_out.last().unwrap());
 }

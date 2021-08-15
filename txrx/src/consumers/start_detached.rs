@@ -1,4 +1,4 @@
-use crate::traits::{Connection, Receiver, Sender, SenderFor};
+use crate::traits::{Receiver, Sender};
 use std::marker::PhantomData;
 
 struct DropPanic;
@@ -9,11 +9,9 @@ impl Drop for DropPanic {
     }
 }
 
-pub fn start_detached<S>(sender: S)
-where
-    S: SenderFor<SinkFor<S>>,
+pub fn start_detached<S: 'static + Send + Sender>(sender: S)
 {
-    sender.connect(SinkFor::new()).start();
+    sender.start(SinkFor::<S>::new());
 }
 
 pub struct SinkFor<S> {
@@ -26,7 +24,7 @@ impl<S> SinkFor<S> {
     }
 }
 
-impl<S: Sender> Receiver for SinkFor<S> {
+impl<S: 'static + Send + Sender> Receiver for SinkFor<S> {
     type Input = S::Output;
     type Error = S::Error;
 

@@ -1,34 +1,24 @@
-use crate::traits::{Connection, Receiver, Sender, SenderFor};
+use crate::traits::{Receiver, Sender};
 use std::marker::PhantomData;
 
 pub trait Scheduler {
-    type Sender: Sender;
+    type Sender: 'static + Send + Sender;
     fn schedule(&mut self) -> Self::Sender;
+    fn execute<W>(&mut self, work: W)
+    where
+        W: 'static + Send + Work
+    {
+        self.schedule().start(ExecuteReceiver::<Self::Sender, W>::new(work));
+    }
 }
 
 pub trait Work {
     fn execute(self);
 }
 
-pub trait WorkExecutor<W: Work>: Scheduler {
-    fn execute(&mut self, work: W);
-}
-
 impl<T: FnOnce()> Work for T {
     fn execute(self) {
         (self)();
-    }
-}
-
-impl<Sched, W> WorkExecutor<W> for Sched
-where
-    Sched: Scheduler,
-    W: Work,
-    Sched::Sender: SenderFor<ExecuteReceiver<Sched::Sender, W>>,
-{
-    fn execute(&mut self, work: W) {
-        let conn = self.schedule().connect(ExecuteReceiver::new(work));
-        conn.start();
     }
 }
 

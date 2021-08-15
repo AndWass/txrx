@@ -2,4 +2,10 @@
 
 members = [
     "txrx",
+    "txrx-rayon"
 ]
+
+
+[profile.release]
+codegen-units = 1
+lto = "fat"

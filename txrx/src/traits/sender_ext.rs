@@ -2,8 +2,8 @@ use crate::adaptors::and_then::AndThen;
 use crate::adaptors::bulk::Bulk;
 use crate::adaptors::map::Map;
 use crate::adaptors::transfer::Transfer;
-use crate::consumers::future::{Future, FutureReceiver};
-use crate::traits::{Sender, SenderFor};
+use crate::consumers::future::Future;
+use crate::traits::Sender;
 
 mod sealed {
     use crate::traits::Sender;
@@ -13,7 +13,7 @@ mod sealed {
     impl<T: Sender> Sealed for T {}
 }
 
-pub trait SenderExt: sealed::Sealed + Sender + Sized {
+pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     fn map<F, Ret>(self, func: F) -> Map<Self, F>
     where
         F: FnOnce(Self::Output) -> Ret,
@@ -21,28 +21,26 @@ pub trait SenderExt: sealed::Sealed + Sender + Sized {
         Map::new(self, func)
     }
 
-    fn sync_wait(self) -> crate::consumers::sync_wait::Result<Self::Output, Self::Error>
-    where
-        Self: SenderFor<crate::consumers::sync_wait::Recv<Self>>,
-    {
+    fn sync_wait(self) -> crate::consumers::sync_wait::Result<Self::Output, Self::Error> {
         crate::sync_wait(self)
     }
 
-    fn into_future(self) -> Future<Self>
-    where
-        Self: SenderFor<FutureReceiver<Self>>,
-    {
+    #[inline]
+    fn into_future(self) -> Future<Self> {
         Future::new(self)
     }
 
+    #[inline]
     fn transfer<Sched>(self, scheduler: Sched) -> Transfer<Self, Sched> {
         Transfer::new(self, scheduler)
     }
 
+    #[inline]
     fn and_then<Func>(self, func: Func) -> AndThen<Self, Func> {
         AndThen::new(self, func)
     }
 
+    #[inline]
     fn bulk<Scheduler, Func>(
         self,
         scheduler: Scheduler,
@@ -50,10 +48,10 @@ pub trait SenderExt: sealed::Sealed + Sender + Sized {
         func: Func,
     ) -> Bulk<Scheduler, Self, Func>
     where
-        Func: FnOnce(usize, Self::Output),
+        Func: Fn(usize, Self::Output),
     {
         Bulk::new(scheduler, self, size, func)
     }
 }
 
-impl<T: Sender> SenderExt for T {}
+impl<T: 'static + Sender> SenderExt for T {}

@@ -1,5 +1,4 @@
-use crate::traits::Receiver;
-use crate::traits::{Connection, Sender, SenderFor};
+use crate::traits::{Receiver, Sender};
 
 pub struct Just<T> {
     data: T,
@@ -11,32 +10,17 @@ impl<T> Just<T> {
     }
 }
 
-pub struct JustConnection<T, R: Receiver<Input = T>> {
-    data: T,
-    receiver: R,
-}
-
-impl<T> Sender for Just<T> {
+impl<T> Sender for Just<T>
+where
+    T: 'static + Send
+{
     type Output = T;
     type Error = ();
-}
 
-impl<T, R> SenderFor<R> for Just<T>
-where
-    R: Receiver<Input = T>,
-{
-    type Connection = JustConnection<T, R>;
-
-    fn connect(self, receiver: R) -> Self::Connection {
-        JustConnection {
-            receiver,
-            data: self.data,
-        }
-    }
-}
-
-impl<T, R: Receiver<Input = T>> Connection for JustConnection<T, R> {
-    fn start(self) {
-        self.receiver.set_value(self.data);
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
+        receiver.set_value(self.data);
     }
 }

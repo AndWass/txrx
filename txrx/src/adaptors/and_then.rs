@@ -1,4 +1,4 @@
-use crate::traits::{Connection, Receiver, Sender, SenderFor};
+use crate::traits::{Receiver, Sender};
 use std::marker::PhantomData;
 
 pub struct AndThen<Input, Func> {
@@ -14,26 +14,19 @@ impl<Input, Func> AndThen<Input, Func> {
 
 impl<NextSender, Input, Func> Sender for AndThen<Input, Func>
 where
-    NextSender: Sender<Error = Input::Error>,
     Input: Sender,
-    Func: FnOnce(Input::Output) -> NextSender,
+    Func: 'static + Send + FnOnce(Input::Output) -> NextSender,
+    NextSender: Sender<Error = Input::Error>,
 {
     type Output = NextSender::Output;
     type Error = NextSender::Error;
-}
 
-impl<NextSender, Input, Func, Recv> SenderFor<Recv> for AndThen<Input, Func>
-where
-    Recv: Receiver<Input = NextSender::Output, Error = NextSender::Error>,
-    NextSender: Sender<Error = Input::Error> + SenderFor<Recv>,
-    Input: SenderFor<AndThenReceiver<<Input as Sender>::Output, Func, Recv>>,
-    Func: FnOnce(Input::Output) -> NextSender,
-{
-    type Connection = Input::Connection;
-
-    fn connect(self, receiver: Recv) -> Self::Connection {
-        self.input
-            .connect(AndThenReceiver::new(self.func, receiver))
+    #[inline]
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
+        self.input.start(AndThenReceiver::new(self.func, receiver));
     }
 }
 
@@ -55,21 +48,25 @@ impl<Input, Func, NextReceiver> AndThenReceiver<Input, Func, NextReceiver> {
 
 impl<Input, Func, NextReceiver, Ret> Receiver for AndThenReceiver<Input, Func, NextReceiver>
 where
-    NextReceiver: Receiver<Input = Ret::Output>,
     Func: FnOnce(Input) -> Ret,
-    Ret: SenderFor<NextReceiver>,
+    Ret: Sender,
+    NextReceiver: 'static + Send + Receiver<Input = Ret::Output, Error = Ret::Error>,
+    Input: 'static + Send,
 {
     type Input = Input;
     type Error = NextReceiver::Error;
 
+    #[inline]
     fn set_value(self, value: Self::Input) {
-        (self.func)(value).connect(self.next).start();
+        (self.func)(value).start(self.next);
     }
 
+    #[inline]
     fn set_error(self, error: Self::Error) {
         self.next.set_error(error);
     }
 
+    #[inline]
     fn set_cancelled(self) {
         self.next.set_cancelled();
     }

@@ -1,4 +1,4 @@
-use crate::traits::{Connection, Receiver, Scheduler, Sender, SenderFor, Work, WorkExecutor};
+use crate::traits::{Receiver, Scheduler, Sender, Work};
 
 pub struct On<SchedulerT, SenderT> {
     scheduler: SchedulerT,
@@ -14,54 +14,31 @@ impl<SchedulerT, SenderT> On<SchedulerT, SenderT> {
 impl<SchedulerT, SenderT> Sender for On<SchedulerT, SenderT>
 where
     SchedulerT: Scheduler,
-    SenderT: Sender,
+    SenderT: 'static + Send + Sender,
 {
     type Output = SenderT::Output;
     type Error = SenderT::Error;
-}
 
-impl<Recv, SchedulerT, SenderT> SenderFor<Recv> for On<SchedulerT, SenderT>
-where
-    SenderT: SenderFor<Recv>,
-    Recv: Receiver<Input = SenderT::Output, Error = SenderT::Error>,
-    SchedulerT: WorkExecutor<OnWork<SenderT::Connection>>,
-{
-    type Connection = OnConnection<SchedulerT, SenderT::Connection>;
-
-    fn connect(self, receiver: Recv) -> Self::Connection {
-        OnConnection {
-            scheduler: self.scheduler,
-            connection: self.sender.connect(receiver),
-        }
-    }
-}
-
-pub struct OnWork<ConnT> {
-    job: ConnT,
-}
-
-impl<ConnT: Connection> Work for OnWork<ConnT> {
-    fn execute(self) {
-        self.job.start()
-    }
-}
-
-pub struct OnConnection<SchedulerT, ConnT> {
-    scheduler: SchedulerT,
-    connection: ConnT,
-}
-
-impl<SchedulerT, ConnT> Unpin for OnConnection<SchedulerT, ConnT> {}
-
-impl<SchedulerT, ConnT> Connection for OnConnection<SchedulerT, ConnT>
-where
-    ConnT: Connection,
-    SchedulerT: WorkExecutor<OnWork<ConnT>>,
-{
-    fn start(mut self) {
+    fn start<R>(mut self, receiver: R) where R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error> {
         self.scheduler.execute(OnWork {
-            job: self.connection,
+            sender: self.sender,
+            receiver,
         });
+    }
+}
+
+pub struct OnWork<SenderT, ReceiverT> {
+    sender: SenderT,
+    receiver: ReceiverT,
+}
+
+impl<SenderT, ReceiverT> Work for OnWork<SenderT, ReceiverT>
+where
+    SenderT: Sender,
+    ReceiverT: 'static + Send + Receiver<Input=SenderT::Output, Error=SenderT::Error>
+{
+    fn execute(self) {
+        self.sender.start(self.receiver);
     }
 }
 

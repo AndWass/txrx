@@ -1,7 +1,8 @@
-use crate::traits::{Connection, Receiver};
+use crate::traits::{Receiver, Work};
 use std::collections::VecDeque;
-use std::sync::{Arc, Condvar, Mutex};
-use std::time::Duration;
+use std::sync::{Arc};
+
+use crate::priv_sync::{Mutex, Condvar};
 
 type QueueType = VecDeque<Box<dyn FnOnce() + Send>>;
 
@@ -20,7 +21,7 @@ impl Inner {
 
     pub fn add<F: 'static + FnOnce() + Send>(&self, work: F) {
         {
-            let mut queue = self.queue.lock().unwrap();
+            let mut queue = self.queue.lock();
             queue.push_back(Box::new(work));
         }
         self.cond_var.notify_one();
@@ -28,34 +29,10 @@ impl Inner {
 
     pub fn run_one(&self) -> bool {
         let to_run = {
-            let mut guard = self.queue.lock().unwrap();
-            if !guard.is_empty() {
-                guard.pop_front()
-            }
-            else {
-                let mut guard = self.cond_var.wait_while(guard, |x| x.is_empty()).unwrap();
-                guard.pop_front()
-            }
-        };
-
-        if let Some(to_run) = to_run {
-            to_run();
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn run_one_for(&self, timeout: Duration) -> bool {
-        let to_run = {
-            let guard = self.queue.lock().unwrap();
-            let (mut guard, _) = self
-                .cond_var
-                .wait_timeout_while(guard, timeout, |x| x.is_empty())
-                .unwrap();
-            if guard.is_empty() {
-                return false;
-            }
+            let guard = self.queue.lock();
+            let mut guard = self.cond_var.wait_while(guard, |x| {
+                x.is_empty()
+            });
             guard.pop_front()
         };
 
@@ -101,10 +78,6 @@ impl Runner {
     pub fn run_one(&self) -> bool {
         self.inner.run_one()
     }
-
-    pub fn run_one_for(&self, timeout: Duration) -> bool {
-        self.inner.run_one_for(timeout)
-    }
 }
 
 pub struct ScheduledSender {
@@ -114,28 +87,12 @@ pub struct ScheduledSender {
 impl crate::traits::Sender for ScheduledSender {
     type Output = ();
     type Error = ();
-}
 
-impl<R: 'static + Send + Receiver<Input = ()>> crate::traits::SenderFor<R> for ScheduledSender {
-    type Connection = Connected<R>;
-
-    fn connect(self, receiver: R) -> Self::Connection {
-        Self::Connection {
-            queue: self.inner,
-            receiver: Box::new(receiver),
-        }
-    }
-}
-
-pub struct Connected<R> {
-    receiver: Box<R>,
-    queue: Arc<Inner>,
-}
-
-impl<R: 'static + Send + Receiver<Input = ()>> Connection for Connected<R> {
-    fn start(self) {
-        let receiver = self.receiver;
-        self.queue.add(move || {
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
+        self.inner.add(move || {
             receiver.set_value(());
         });
     }
@@ -153,5 +110,11 @@ impl crate::traits::Scheduler for Scheduler {
         ScheduledSender {
             inner: self.inner.clone(),
         }
+    }
+
+    fn execute<W>(&mut self, work: W) where W: 'static + Send + Work {
+        self.inner.add(move || {
+            work.execute();
+        });
     }
 }

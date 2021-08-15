@@ -5,6 +5,8 @@ pub mod manual_executor;
 pub mod traits;
 pub mod utility;
 
+pub(crate) mod priv_sync;
+
 mod immediate_scheduler;
 
 pub use consumers::start_detached::start_detached;

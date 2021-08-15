@@ -1,5 +1,6 @@
-use crate::traits::{Connection, Receiver, Sender, SenderFor};
-use std::sync::{Arc, Condvar, Mutex};
+use crate::traits::{Receiver, Sender};
+use std::sync::Arc;
+use crate::priv_sync::AsyncValue;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Result<V, E> {
@@ -39,25 +40,24 @@ impl<V, E> Result<V, E> {
 }
 
 pub struct State<S: Sender> {
-    result: Mutex<Option<Result<S::Output, S::Error>>>,
-    cv: Condvar,
+    value: AsyncValue<Result<S::Output, S::Error>>
 }
+
+unsafe impl<S: Sender> Sync for State<S> {}
 
 impl<S: Sender> State<S> {
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
-            result: Mutex::new(None),
-            cv: Condvar::new(),
+            value: AsyncValue::new(),
         })
     }
 
     pub(crate) fn wait_result(self: Arc<Self>) -> Result<S::Output, S::Error> {
-        let lock = self.result.lock().unwrap();
-        self.cv
-            .wait_while(lock, |x| x.is_none())
-            .unwrap()
-            .take()
-            .unwrap()
+        self.value.take()
+    }
+
+    fn set_result(self: Arc<Self>, result: Result<S::Output, S::Error>) {
+        self.value.set(result);
     }
 }
 
@@ -76,26 +76,20 @@ impl<S: Sender> Receiver for Recv<S> {
     type Error = S::Error;
 
     fn set_value(self, value: Self::Input) {
-        let mut result = self.state.result.lock().unwrap();
-        *result = Some(Result::Value(value));
-        self.state.cv.notify_one();
+        self.state.set_result(Result::Value(value));
     }
 
     fn set_error(self, error: Self::Error) {
-        let mut result = self.state.result.lock().unwrap();
-        *result = Some(Result::Error(error));
-        self.state.cv.notify_one();
+        self.state.set_result(Result::Error(error));
     }
 
     fn set_cancelled(self) {
-        let mut result = self.state.result.lock().unwrap();
-        *result = Some(Result::Cancelled);
-        self.state.cv.notify_one();
+        self.state.set_result(Result::Cancelled);
     }
 }
 
-pub fn sync_wait<S: Sender + SenderFor<Recv<S>>>(sender: S) -> Result<S::Output, S::Error> {
+pub fn sync_wait<S: 'static + Sender>(sender: S) -> Result<S::Output, S::Error> {
     let state: Arc<State<S>> = State::new();
-    sender.connect(Recv::new(Arc::clone(&state))).start();
+    sender.start(Recv::new(Arc::clone(&state)));
     state.wait_result()
 }

@@ -1,4 +1,4 @@
-use crate::traits::{Receiver, Scheduler, Sender, SenderFor, Work, WorkExecutor};
+use crate::traits::{Receiver, Scheduler, Sender, Work};
 
 pub struct Transfer<SenderT, SchedulerT> {
     input: SenderT,
@@ -14,25 +14,16 @@ impl<SenderT, SchedulerT> Transfer<SenderT, SchedulerT> {
 impl<S, Sc> Sender for Transfer<S, Sc>
 where
     S: Sender,
-    Sc: Scheduler,
+    Sc: 'static + Send + Scheduler,
 {
     type Output = S::Output;
     type Error = S::Error;
-}
 
-impl<Recv, SendT, SchedT> SenderFor<Recv> for Transfer<SendT, SchedT>
-where
-    SendT: SenderFor<TransferReceiver<Recv, SchedT>>,
-    SchedT: WorkExecutor<TransferJob<Recv>>,
-    Recv: Receiver<Input = SendT::Output>,
-{
-    type Connection = SendT::Connection;
-
-    fn connect(self, receiver: Recv) -> Self::Connection {
-        self.input.connect(TransferReceiver {
+    fn start<R>(self, receiver: R) where R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error> {
+        self.input.start(TransferReceiver {
             next: receiver,
-            scheduler: self.scheduler,
-        })
+            scheduler: self.scheduler
+        });
     }
 }
 
@@ -83,8 +74,8 @@ pub struct TransferReceiver<Next, SchedT> {
 
 impl<Next, SchedT> Receiver for TransferReceiver<Next, SchedT>
 where
-    Next: Receiver,
-    SchedT: WorkExecutor<TransferJob<Next>>,
+    Next: 'static + Send + Receiver,
+    SchedT: 'static + Send + Scheduler,
 {
     type Input = Next::Input;
     type Error = Next::Error;
