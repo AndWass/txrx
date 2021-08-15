@@ -41,16 +41,15 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     }
 
     #[inline]
-    fn bulk<Scheduler, Func>(
+    fn bulk<Func>(
         self,
-        scheduler: Scheduler,
         size: usize,
         func: Func,
-    ) -> Bulk<Scheduler, Self, Func>
+    ) -> Bulk<Self, Func>
     where
         Func: Fn(usize, Self::Output),
     {
-        Bulk::new(scheduler, self, size, func)
+        Bulk::new(self, size, func)
     }
 }
 

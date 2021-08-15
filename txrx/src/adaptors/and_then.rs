@@ -20,6 +20,7 @@ where
 {
     type Output = NextSender::Output;
     type Error = NextSender::Error;
+    type Scheduler = Input::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R)
@@ -27,6 +28,11 @@ where
         R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
     {
         self.input.start(AndThenReceiver::new(self.func, receiver));
+    }
+
+    #[inline]
+    fn get_scheduler(&self) -> Self::Scheduler {
+        self.input.get_scheduler()
     }
 }
 

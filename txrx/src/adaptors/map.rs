@@ -35,10 +35,15 @@ where
 {
     type Output = Ret;
     type Error = Src::Error;
+    type Scheduler = Src::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R) where R: 'static + Send + ReceiverT<Input=Self::Output, Error=Self::Error> {
         self.sender.start(Receiver::new(receiver, self.func));
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        self.sender.get_scheduler()
     }
 }
 

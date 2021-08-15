@@ -87,6 +87,7 @@ pub struct ScheduledSender {
 impl crate::traits::Sender for ScheduledSender {
     type Output = ();
     type Error = ();
+    type Scheduler = Scheduler;
 
     fn start<R>(self, receiver: R)
     where
@@ -95,6 +96,12 @@ impl crate::traits::Sender for ScheduledSender {
         self.inner.add(move || {
             receiver.set_value(());
         });
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        Self::Scheduler {
+            inner: self.inner.clone()
+        }
     }
 }
 

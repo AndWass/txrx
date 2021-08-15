@@ -1,4 +1,5 @@
 use crate::traits::{Receiver, Sender};
+use crate::ImmediateScheduler;
 
 pub struct Just<T> {
     data: T,
@@ -16,11 +17,16 @@ where
 {
     type Output = T;
     type Error = ();
+    type Scheduler = ImmediateScheduler;
 
     fn start<R>(self, receiver: R)
     where
         R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
     {
         receiver.set_value(self.data);
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        ImmediateScheduler
     }
 }

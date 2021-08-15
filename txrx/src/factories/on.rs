@@ -13,17 +13,22 @@ impl<SchedulerT, SenderT> On<SchedulerT, SenderT> {
 
 impl<SchedulerT, SenderT> Sender for On<SchedulerT, SenderT>
 where
-    SchedulerT: Scheduler,
+    SchedulerT: 'static + Scheduler + Clone + Send,
     SenderT: 'static + Send + Sender,
 {
     type Output = SenderT::Output;
     type Error = SenderT::Error;
+    type Scheduler = SchedulerT;
 
     fn start<R>(mut self, receiver: R) where R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error> {
         self.scheduler.execute(OnWork {
             sender: self.sender,
             receiver,
         });
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        self.scheduler.clone()
     }
 }
 

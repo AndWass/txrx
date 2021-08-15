@@ -18,6 +18,7 @@ impl PoolScheduler {
 impl Sender for PoolScheduler {
     type Output = ();
     type Error = ();
+    type Scheduler = Self;
 
     #[inline]
     fn start<R>(self, receiver: R)
@@ -27,6 +28,10 @@ impl Sender for PoolScheduler {
         self.pool.spawn(move || {
             receiver.set_value(());
         });
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        self.clone()
     }
 }
 
@@ -66,6 +71,7 @@ impl GlobalScheduler {
 impl Sender for GlobalScheduler {
     type Output = ();
     type Error = ();
+    type Scheduler = Self;
 
     #[inline]
     fn start<R>(self, receiver: R)
@@ -75,6 +81,10 @@ impl Sender for GlobalScheduler {
         rayon::spawn(move || {
             receiver.set_value(());
         })
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        Self
     }
 }
 

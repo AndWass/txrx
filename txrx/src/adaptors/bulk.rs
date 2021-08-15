@@ -3,18 +3,16 @@ use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-pub struct Bulk<Scheduler, InputSender, Func> {
-    scheduler: Scheduler,
+pub struct Bulk<InputSender, Func> {
     input: InputSender,
     size: usize,
     func: Func,
 }
 
-impl<Scheduler, InputSender, Func> Bulk<Scheduler, InputSender, Func> {
+impl<InputSender, Func> Bulk<InputSender, Func> {
     #[inline]
-    pub fn new(scheduler: Scheduler, input: InputSender, size: usize, func: Func) -> Self {
+    pub fn new(input: InputSender, size: usize, func: Func) -> Self {
         Self {
-            scheduler,
             input,
             size,
             func,
@@ -22,27 +20,33 @@ impl<Scheduler, InputSender, Func> Bulk<Scheduler, InputSender, Func> {
     }
 }
 
-impl<Scheduler, InputSender, Func> Sender for Bulk<Scheduler, InputSender, Func>
+impl<InputSender, Func> Sender for Bulk<InputSender, Func>
 where
     InputSender: Sender,
     InputSender::Output: Clone + Send,
     Func: 'static + Send + Sync + Clone + Fn(usize, InputSender::Output),
-    Scheduler: 'static + Send + crate::traits::Scheduler,
 {
     type Output = InputSender::Output;
     type Error = InputSender::Error;
+    type Scheduler = InputSender::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R)
     where
         R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
     {
+        let scheduler = self.input.get_scheduler();
         self.input.start(BulkReceiver {
             func: self.func,
             amount: self.size,
             next: receiver,
-            scheduler: self.scheduler,
+            scheduler,
         });
+    }
+
+    #[inline]
+    fn get_scheduler(&self) -> Self::Scheduler {
+        self.input.get_scheduler()
     }
 }
 

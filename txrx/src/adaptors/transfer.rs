@@ -14,16 +14,21 @@ impl<SenderT, SchedulerT> Transfer<SenderT, SchedulerT> {
 impl<S, Sc> Sender for Transfer<S, Sc>
 where
     S: Sender,
-    Sc: 'static + Send + Scheduler,
+    Sc: 'static + Send + Clone + Scheduler,
 {
     type Output = S::Output;
     type Error = S::Error;
+    type Scheduler = Sc;
 
     fn start<R>(self, receiver: R) where R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error> {
         self.input.start(TransferReceiver {
             next: receiver,
             scheduler: self.scheduler
         });
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        self.scheduler.clone()
     }
 }
 

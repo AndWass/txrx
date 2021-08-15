@@ -79,8 +79,8 @@ fn inclusive_scan(
     let output = MutView::new(output);
 
     txrx::factories::just((partials, input, output))
+        .transfer(scheduler)
         .bulk(
-            scheduler.clone(),
             tile_count,
             move |i, (mut partials, input, mut output)| {
                 let start = i * tile_size;
@@ -108,7 +108,6 @@ fn inclusive_scan(
             (p, output)
         })
         .bulk(
-            scheduler.clone(),
             tile_count,
             move |i, (partials, mut output)| {
                 let start = i * tile_size;
