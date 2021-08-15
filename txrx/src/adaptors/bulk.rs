@@ -70,17 +70,29 @@ where
 
     #[inline]
     fn set_value(mut self, value: Self::Input) {
-        let end_reporter = Arc::new(EndReporter::new(self.amount, self.next, value.clone()));
-        let func = Arc::new(self.func);
-        for x in 0..self.amount {
-            let work = BulkWork {
-                input: value.clone(),
-                step: x,
-                func: func.clone(),
-                end_reporter: end_reporter.clone(),
-            };
+        if self.amount > 0 {
+            let end_reporter = Arc::new(EndReporter::new(self.amount, self.next, value.clone()));
+            let func = Arc::new(self.func);
+            for x in 0..self.amount-1 {
+                let work = BulkWork {
+                    input: value.clone(),
+                    step: x,
+                    func: func.clone(),
+                    end_reporter: end_reporter.clone(),
+                };
 
-            self.scheduler.execute(work);
+                self.scheduler.execute(work);
+            }
+
+            BulkWork {
+                input: value,
+                step: self.amount-1,
+                func,
+                end_reporter
+            }.execute();
+        }
+        else {
+            self.next.set_value(value)
         }
     }
 
