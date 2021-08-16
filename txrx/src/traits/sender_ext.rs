@@ -1,10 +1,11 @@
+use crate::adaptors::and::And;
 use crate::adaptors::and_then::AndThen;
 use crate::adaptors::bulk::Bulk;
 use crate::adaptors::ensure_started::EnsureStarted;
 use crate::adaptors::map::Map;
 use crate::adaptors::transfer::Transfer;
-use crate::traits::Sender;
 use crate::consumers::into_awaitable::Awaitable;
+use crate::traits::Sender;
 
 mod sealed {
     use crate::traits::Sender;
@@ -34,6 +35,11 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     #[inline]
     fn transfer<Sched>(self, scheduler: Sched) -> Transfer<Self, Sched> {
         Transfer::new(self, scheduler)
+    }
+
+    #[inline]
+    fn and<Right>(self, right: Right) -> And<Self, Right> {
+        And::new(self, right)
     }
 
     #[inline]

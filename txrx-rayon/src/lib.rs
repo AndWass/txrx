@@ -67,6 +67,12 @@ impl GlobalScheduler {
     }
 }
 
+impl Default for GlobalScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Sender for GlobalScheduler {
     type Output = ();
     type Error = ();

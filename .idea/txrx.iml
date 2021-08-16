@@ -14,6 +14,17 @@
       <sourceFolder url="file://$MODULE_DIR$/txrx-rayon/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/txrx/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/txrx/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/futures-core-ed66160b805878ea/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/log-2912b140ad9f67f1/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/memchr-66f15da7228cf960/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/num-bigint-779dcb81689b1e49/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/num-integer-14af52930aba1caa/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/num-traits-27808feb4eaf30a1/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/proc-macro2-b61e1bb2d2a4c8bd/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/syn-dbafa118a4fcf9fa/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/debug/build/value-bag-6f3f8ad40ff9833e/out" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/txrx-examples/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/txrx-examples/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/txrx/target" />
     </content>

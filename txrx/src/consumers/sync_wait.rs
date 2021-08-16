@@ -32,10 +32,7 @@ impl<V, E> Result<V, E> {
     }
 
     pub fn is_cancelled(&self) -> bool {
-        match self {
-            Result::Cancelled => true,
-            _ => false,
-        }
+        matches!(self, Result::Cancelled)
     }
 }
 

@@ -2,7 +2,8 @@
 
 members = [
     "txrx",
-    "txrx-rayon"
+    "txrx-rayon",
+    "txrx-examples"
 ]
 
 

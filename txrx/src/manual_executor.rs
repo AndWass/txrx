@@ -47,6 +47,12 @@ pub struct ManualExecutor {
     inner: Arc<Inner>,
 }
 
+impl Default for ManualExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ManualExecutor {
     pub fn new() -> Self {
         Self {

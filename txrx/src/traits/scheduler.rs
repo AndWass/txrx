@@ -2,7 +2,7 @@ use crate::traits::{Receiver, Sender};
 use std::marker::PhantomData;
 
 pub trait Scheduler: 'static + Send + Clone {
-    type Sender: 'static + Send + Sender;
+    type Sender: 'static + Send + Sender<Output = ()>;
     fn schedule(&mut self) -> Self::Sender;
     fn execute<W>(&mut self, work: W)
     where

@@ -59,7 +59,7 @@ impl<T> AsyncValue<T> {
         let mut lock = self.cv.wait_while(lock, |x| x.is_none());
 
         if let Some(x) = lock.take() {
-            return x;
+            x
         } else {
             unsafe { unreachable_unchecked() }
         }
