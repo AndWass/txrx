@@ -1,0 +1,4 @@
+(function() {var implementors = {};
+implementors["txrx"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"txrx/manual_executor/struct.ManualExecutor.html\" title=\"struct txrx::manual_executor::ManualExecutor\">ManualExecutor</a>","synthetic":false,"types":["txrx::manual_executor::ManualExecutor"]}];
+implementors["txrx_rayon"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"txrx_rayon/struct.GlobalScheduler.html\" title=\"struct txrx_rayon::GlobalScheduler\">GlobalScheduler</a>","synthetic":false,"types":["txrx_rayon::GlobalScheduler"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

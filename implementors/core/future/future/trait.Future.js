@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["txrx"] = [{"text":"impl&lt;S:&nbsp;<a class=\"trait\" href=\"txrx/traits/trait.Sender.html\" title=\"trait txrx::traits::Sender\">Sender</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/future/future/trait.Future.html\" title=\"trait core::future::future::Future\">Future</a> for <a class=\"struct\" href=\"txrx/consumers/into_awaitable/struct.Awaitable.html\" title=\"struct txrx::consumers::into_awaitable::Awaitable\">Awaitable</a>&lt;S&gt;","synthetic":false,"types":["txrx::consumers::into_awaitable::Awaitable"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
