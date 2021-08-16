@@ -3,7 +3,7 @@
 A very basic Sender/Receiver implementation inspired by the C++ [P2300R1]
 ISO paper.
 
-[API Documentation for master](file:///home/andreas/programming/rust/txrx/target/doc/txrx/index.html)
+[API Documentation for master](https://andwass.github.io/txrx/txrx/index.html)
 
 [P2300R1]: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2300r1.html
 
