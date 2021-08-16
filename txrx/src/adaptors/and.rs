@@ -2,21 +2,23 @@ use crate::traits::{Receiver, Sender};
 
 mod hidden {
     use crate::priv_sync::{Mutex, MutexGuard};
-    use crate::traits::{Receiver, Sender};
+    use crate::traits::{Receiver, Scheduler, Sender};
     use std::sync::Arc;
 
     struct ReceiverSharedData<Left: Sender, Right: Sender, Next> {
         left_values: Option<Left::Output>,
         right_values: Option<Right::Output>,
         next: Option<Next>,
+        scheduler: Left::Scheduler,
     }
 
     impl<Left: Sender, Right: Sender, Next> ReceiverSharedData<Left, Right, Next> {
-        fn new(next: Next) -> Self {
+        fn new(next: Next, scheduler: Left::Scheduler) -> Self {
             Self {
                 left_values: None,
                 right_values: None,
                 next: Some(next),
+                scheduler,
             }
         }
     }
@@ -26,9 +28,9 @@ mod hidden {
     }
 
     impl<Left: Sender, Right: Sender, Next> SharedState<Left, Right, Next> {
-        pub fn new(next: Next) -> Self {
+        pub fn new(next: Next, scheduler: Left::Scheduler) -> Self {
             Self {
-                state: Arc::new(Mutex::new(ReceiverSharedData::new(next))),
+                state: Arc::new(Mutex::new(ReceiverSharedData::new(next, scheduler))),
             }
         }
     }
@@ -45,7 +47,7 @@ mod hidden {
     where
         Left: Sender,
         Right: Sender,
-        Next: Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
+        Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
     {
         pub fn set_cancelled(&self) {
             let mut lock = self.state.lock();
@@ -67,13 +69,13 @@ mod hidden {
             let mut lock = self.state.lock();
             if left.is_some() {
                 if lock.right_values.is_some() && lock.next.is_some() {
-                    Self::set_value_on_next(&mut left, &mut lock.right_values.take(), lock);
+                    self.set_value_on_next(&mut left, &mut lock.right_values.take(), lock, false);
                 } else {
                     lock.left_values = left;
                 }
             } else if right.is_some() {
                 if lock.left_values.is_some() && lock.next.is_some() {
-                    Self::set_value_on_next(&mut lock.left_values.take(), &mut right, lock);
+                    self.set_value_on_next(&mut lock.left_values.take(), &mut right, lock, true);
                 } else {
                     lock.right_values = right;
                 }
@@ -81,14 +83,24 @@ mod hidden {
         }
 
         fn set_value_on_next(
+            &self,
             left: &mut Option<<Left as Sender>::Output>,
             right: &mut Option<<Right as Sender>::Output>,
             mut lock: MutexGuard<ReceiverSharedData<Left, Right, Next>>,
+            use_scheduler: bool,
         ) {
             match (left.take(), right.take(), lock.next.take()) {
                 (Some(left), Some(right), Some(next)) => {
-                    drop(lock);
-                    next.set_value((left, right));
+                    if use_scheduler {
+                        let mut scheduler = lock.scheduler.clone();
+                        drop(lock);
+                        scheduler.execute(|| {
+                            next.set_value((left, right));
+                        });
+                    } else {
+                        drop(lock);
+                        next.set_value((left, right));
+                    }
                 }
                 _ => unreachable!("This code is unreachable!"),
             }
@@ -121,7 +133,8 @@ where
     where
         R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
     {
-        let state = hidden::SharedState::<Left, Right, R>::new(receiver);
+        let scheduler = self.left.get_scheduler();
+        let state = hidden::SharedState::<Left, Right, R>::new(receiver, scheduler);
         let left_receiver = LeftReceiver {
             state: state.clone(),
         };
@@ -145,7 +158,7 @@ impl<Left, Right, Next> Receiver for LeftReceiver<Left, Right, Next>
 where
     Left: Sender,
     Right: Sender,
-    Next: Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
+    Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
 {
     type Input = Left::Output;
     type Error = Left::Error;
@@ -171,7 +184,7 @@ impl<Left, Right, Next> Receiver for RightReceiver<Left, Right, Next>
 where
     Left: Sender,
     Right: Sender,
-    Next: Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
+    Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
     Right::Error: Into<Left::Error>,
 {
     type Input = Right::Output;
@@ -192,7 +205,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::manual_executor::ManualExecutor;
     use crate::test::ManualSender;
+    use crate::traits::Scheduler;
     use crate::SenderExt;
 
     #[test]
@@ -217,5 +232,39 @@ mod tests {
         assert!(!fut.is_complete());
         left_trigger.trigger();
         assert!(fut.is_complete());
+    }
+
+    #[test]
+    fn correct_scheduler() {
+        let left = ManualExecutor::new();
+        let right = ManualExecutor::new();
+
+        {
+            let fut = left
+                .scheduler()
+                .schedule()
+                .and(right.scheduler().schedule())
+                .ensure_started();
+
+            assert!(left.runner().run_one());
+            assert!(!fut.is_complete());
+            assert!(right.runner().run_one());
+            assert!(!fut.is_complete());
+            assert!(left.runner().run_one());
+            assert!(fut.is_complete());
+        }
+
+        {
+            let fut = left
+                .scheduler()
+                .schedule()
+                .and(right.scheduler().schedule())
+                .ensure_started();
+
+            assert!(right.runner().run_one());
+            assert!(!fut.is_complete());
+            assert!(left.runner().run_one());
+            assert!(fut.is_complete());
+        }
     }
 }
