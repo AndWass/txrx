@@ -12,18 +12,14 @@ pub struct Bulk<InputSender, Func> {
 impl<InputSender, Func> Bulk<InputSender, Func> {
     #[inline]
     pub fn new(input: InputSender, size: usize, func: Func) -> Self {
-        Self {
-            input,
-            size,
-            func,
-        }
+        Self { input, size, func }
     }
 }
 
 impl<InputSender, Func> Sender for Bulk<InputSender, Func>
 where
     InputSender: Sender,
-    InputSender::Output: Clone + Send,
+    InputSender::Output: Clone,
     Func: 'static + Send + Sync + Clone + Fn(usize, InputSender::Output),
 {
     type Output = InputSender::Output;
@@ -73,7 +69,7 @@ where
         if self.amount > 0 {
             let end_reporter = Arc::new(EndReporter::new(self.amount, self.next, value.clone()));
             let func = Arc::new(self.func);
-            for x in 0..self.amount-1 {
+            for x in 0..self.amount - 1 {
                 let work = BulkWork {
                     input: value.clone(),
                     step: x,
@@ -86,12 +82,12 @@ where
 
             BulkWork {
                 input: value,
-                step: self.amount-1,
+                step: self.amount - 1,
                 func,
-                end_reporter
-            }.execute();
-        }
-        else {
+                end_reporter,
+            }
+            .execute();
+        } else {
             self.next.set_value(value)
         }
     }
@@ -167,7 +163,7 @@ mod tests {
         let fut = executor
             .scheduler()
             .schedule()
-            .bulk( 2, |_step, _| {})
+            .bulk(2, |_step, _| {})
             .ensure_started();
         assert!(!fut.is_complete());
         assert!(executor.runner().run_one());

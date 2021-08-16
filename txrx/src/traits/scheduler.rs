@@ -1,14 +1,15 @@
 use crate::traits::{Receiver, Sender};
 use std::marker::PhantomData;
 
-pub trait Scheduler: Send + Clone {
+pub trait Scheduler: 'static + Send + Clone {
     type Sender: 'static + Send + Sender;
     fn schedule(&mut self) -> Self::Sender;
     fn execute<W>(&mut self, work: W)
     where
-        W: 'static + Send + Work
+        W: 'static + Send + Work,
     {
-        self.schedule().start(ExecuteReceiver::<Self::Sender, W>::new(work));
+        self.schedule()
+            .start(ExecuteReceiver::<Self::Sender, W>::new(work));
     }
 }
 

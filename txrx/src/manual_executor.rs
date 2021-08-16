@@ -1,8 +1,8 @@
 use crate::traits::{Receiver, Work};
 use std::collections::VecDeque;
-use std::sync::{Arc};
+use std::sync::Arc;
 
-use crate::priv_sync::{Mutex, Condvar};
+use crate::priv_sync::{Condvar, Mutex};
 
 type QueueType = VecDeque<Box<dyn FnOnce() + Send>>;
 
@@ -30,9 +30,7 @@ impl Inner {
     pub fn run_one(&self) -> bool {
         let to_run = {
             let guard = self.queue.lock();
-            let mut guard = self.cond_var.wait_while(guard, |x| {
-                x.is_empty()
-            });
+            let mut guard = self.cond_var.wait_while(guard, |x| x.is_empty());
             guard.pop_front()
         };
 
@@ -100,7 +98,7 @@ impl crate::traits::Sender for ScheduledSender {
 
     fn get_scheduler(&self) -> Self::Scheduler {
         Self::Scheduler {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         }
     }
 }
@@ -119,7 +117,10 @@ impl crate::traits::Scheduler for Scheduler {
         }
     }
 
-    fn execute<W>(&mut self, work: W) where W: 'static + Send + Work {
+    fn execute<W>(&mut self, work: W)
+    where
+        W: 'static + Send + Work,
+    {
         self.inner.add(move || {
             work.execute();
         });

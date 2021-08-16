@@ -1,6 +1,6 @@
 pub trait Receiver {
-    type Input: 'static + Send;
-    type Error: 'static + Send;
+    type Input;
+    type Error;
 
     fn set_value(self, value: Self::Input);
     fn set_error(self, error: Self::Error);
@@ -8,8 +8,8 @@ pub trait Receiver {
 }
 
 pub trait DynReceiver {
-    type Input: 'static + Send;
-    type Error: 'static + Send;
+    type Input;
+    type Error;
 
     fn dyn_set_value(&mut self, value: Self::Input);
     fn dyn_set_error(&mut self, error: Self::Error);
@@ -30,43 +30,5 @@ impl<T: DynReceiver> Receiver for T {
 
     fn set_cancelled(mut self) {
         self.dyn_set_cancelled();
-    }
-}
-
-pub struct ReceiverRef<R>
-{
-    next: Option<R>,
-}
-
-impl<R> ReceiverRef<R>
-{
-    pub fn new(next: R) -> Self {
-        Self {
-            next: Some(next)
-        }
-    }
-}
-
-impl<R: Receiver> DynReceiver for ReceiverRef<R>
-{
-    type Input = R::Input;
-    type Error = R::Error;
-
-    fn dyn_set_value(&mut self, value: Self::Input) {
-        if let Some(next) = self.next.take() {
-            next.set_value(value);
-        }
-    }
-
-    fn dyn_set_error(&mut self, error: Self::Error) {
-        if let Some(next) = self.next.take() {
-            next.set_error(error);
-        }
-    }
-
-    fn dyn_set_cancelled(&mut self) {
-        if let Some(next) = self.next.take() {
-            next.set_cancelled();
-        }
     }
 }

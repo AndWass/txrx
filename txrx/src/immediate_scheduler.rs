@@ -1,4 +1,4 @@
-use crate::traits::{Receiver, Scheduler, Sender};
+use crate::traits::{Receiver, Scheduler, Sender, Work};
 
 #[derive(Copy, Clone)]
 pub struct ImmediateScheduler;
@@ -9,6 +9,13 @@ impl Scheduler for ImmediateScheduler {
     fn schedule(&mut self) -> Self::Sender {
         Self
     }
+
+    fn execute<W>(&mut self, work: W)
+    where
+        W: Work,
+    {
+        work.execute();
+    }
 }
 
 impl Sender for ImmediateScheduler {
@@ -18,7 +25,7 @@ impl Sender for ImmediateScheduler {
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: Receiver<Input = Self::Output, Error = Self::Error>,
     {
         receiver.set_value(());
     }

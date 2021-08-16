@@ -61,7 +61,6 @@ where
 pub struct GlobalScheduler;
 
 impl GlobalScheduler {
-
     #[inline]
     pub fn new() -> Self {
         Self
@@ -97,7 +96,10 @@ impl Scheduler for GlobalScheduler {
     }
 
     #[inline]
-    fn execute<W>(&mut self, work: W) where W: 'static + Send + Work {
+    fn execute<W>(&mut self, work: W)
+    where
+        W: 'static + Send + Work,
+    {
         rayon::spawn(move || {
             work.execute();
         });

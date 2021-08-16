@@ -1,8 +1,8 @@
 use txrx_rayon::rayon::ThreadPoolBuilder;
 
 use std::sync::Arc;
-use txrx::traits::{Sender};
-use txrx::{SenderExt};
+use txrx::traits::Sender;
+use txrx::SenderExt;
 
 #[derive(Clone)]
 struct MutView<F> {
@@ -80,47 +80,45 @@ fn inclusive_scan(
 
     txrx::factories::just((partials, input, output))
         .transfer(scheduler)
-        .bulk(
-            tile_count,
-            move |i, (mut partials, input, mut output)| {
-                let start = i * tile_size;
-                let end = input_size.min((i + 1) * tile_size);
-                if end > start {
-                    unsafe {
-                        let input = &input[start..end];
-                        let out_data = output.as_subslice_mut(start, end-start);
-                        input.iter().scan(0i64, |acc, e| {
+        .bulk(tile_count, move |i, (mut partials, input, mut output)| {
+            let start = i * tile_size;
+            let end = input_size.min((i + 1) * tile_size);
+            if end > start {
+                unsafe {
+                    let input = &input[start..end];
+                    let out_data = output.as_subslice_mut(start, end - start);
+                    input
+                        .iter()
+                        .scan(0i64, |acc, e| {
                             let old = *e;
                             let ret = *acc + *e;
                             *acc = *acc + old;
                             Some(ret)
-                        }).enumerate().for_each(|(index, value)| {
+                        })
+                        .enumerate()
+                        .for_each(|(index, value)| {
                             out_data[index] = value;
                         });
-                        partials.as_subslice_mut(i + 1, 1)[0] = out_data[out_data.len() - 1];
-                    }
+                    partials.as_subslice_mut(i + 1, 1)[0] = out_data[out_data.len() - 1];
                 }
-            },
-        )
+            }
+        })
         .map(move |(mut p, _input, output)| {
             let partials = p.as_slice_mut();
             inplace_inclusive_scan(partials);
             (p, output)
         })
-        .bulk(
-            tile_count,
-            move |i, (partials, mut output)| {
-                let start = i * tile_size;
-                let end = input_size.min((i + 1) * tile_size);
-                if end > start {
-                    let output = unsafe { output.as_subslice_mut(start, end-start) };
-                    let my_partial = partials.as_slice()[i];
-                    output.iter_mut().for_each(|x| {
-                        *x = my_partial + *x;
-                    });
-                }
-            },
-        )
+        .bulk(tile_count, move |i, (partials, mut output)| {
+            let start = i * tile_size;
+            let end = input_size.min((i + 1) * tile_size);
+            if end > start {
+                let output = unsafe { output.as_subslice_mut(start, end - start) };
+                let my_partial = partials.as_slice()[i];
+                output.iter_mut().for_each(|x| {
+                    *x = my_partial + *x;
+                });
+            }
+        })
 }
 
 fn run_iter(data: &mut Vec<i64>) -> (i64, i64) {

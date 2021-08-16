@@ -9,8 +9,7 @@ impl Drop for DropPanic {
     }
 }
 
-pub fn start_detached<S: 'static + Send + Sender>(sender: S)
-{
+pub fn start_detached<S: 'static + Send + Sender>(sender: S) {
     sender.start(SinkFor::<S>::new());
 }
 

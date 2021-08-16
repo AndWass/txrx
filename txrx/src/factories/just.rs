@@ -13,7 +13,7 @@ impl<T> Just<T> {
 
 impl<T> Sender for Just<T>
 where
-    T: 'static + Send
+    T: 'static + Send,
 {
     type Output = T;
     type Error = ();

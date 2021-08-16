@@ -1,8 +1,8 @@
 use crate::adaptors::and_then::AndThen;
 use crate::adaptors::bulk::Bulk;
+use crate::adaptors::ensure_started::EnsureStarted;
 use crate::adaptors::map::Map;
 use crate::adaptors::transfer::Transfer;
-use crate::adaptors::ensure_started::EnsureStarted;
 use crate::traits::Sender;
 
 mod sealed {
@@ -41,11 +41,7 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     }
 
     #[inline]
-    fn bulk<Func>(
-        self,
-        size: usize,
-        func: Func,
-    ) -> Bulk<Self, Func>
+    fn bulk<Func>(self, size: usize, func: Func) -> Bulk<Self, Func>
     where
         Func: Fn(usize, Self::Output),
     {

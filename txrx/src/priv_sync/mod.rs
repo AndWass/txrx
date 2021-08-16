@@ -9,7 +9,7 @@ pub struct Mutex<T> {
 impl<T> Mutex<T> {
     pub fn new(value: T) -> Self {
         Self {
-            inner: std::sync::Mutex::new(value)
+            inner: std::sync::Mutex::new(value),
         }
     }
 
@@ -25,13 +25,13 @@ pub struct Condvar {
 impl Condvar {
     pub fn new() -> Self {
         Self {
-            inner: std::sync::Condvar::new()
+            inner: std::sync::Condvar::new(),
         }
     }
 
     pub fn wait_while<'a, T, F>(&self, lock: MutexGuard<'a, T>, predicate: F) -> MutexGuard<'a, T>
     where
-        F: FnMut(&mut T) -> bool
+        F: FnMut(&mut T) -> bool,
     {
         self.inner.wait_while(lock, predicate).unwrap()
     }
@@ -41,14 +41,12 @@ impl Condvar {
     }
 }
 
-pub struct AsyncValue<T>
-{
+pub struct AsyncValue<T> {
     value: Mutex<Option<T>>,
     cv: Condvar,
 }
 
-impl<T> AsyncValue<T>
-{
+impl<T> AsyncValue<T> {
     pub fn new() -> Self {
         Self {
             value: Mutex::new(None),
@@ -58,14 +56,11 @@ impl<T> AsyncValue<T>
 
     pub fn take(&self) -> T {
         let lock = self.value.lock();
-        let mut lock = self.cv.wait_while(lock, |x| {
-            x.is_none()
-        });
+        let mut lock = self.cv.wait_while(lock, |x| x.is_none());
 
         if let Some(x) = lock.take() {
-            return x
-        }
-        else {
+            return x;
+        } else {
             unsafe { unreachable_unchecked() }
         }
     }

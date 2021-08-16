@@ -1,6 +1,6 @@
+use crate::priv_sync::AsyncValue;
 use crate::traits::{Receiver, Sender};
 use std::sync::Arc;
-use crate::priv_sync::AsyncValue;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Result<V, E> {
@@ -40,7 +40,7 @@ impl<V, E> Result<V, E> {
 }
 
 pub struct State<S: Sender> {
-    value: AsyncValue<Result<S::Output, S::Error>>
+    value: AsyncValue<Result<S::Output, S::Error>>,
 }
 
 unsafe impl<S: Sender> Sync for State<S> {}

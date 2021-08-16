@@ -20,10 +20,13 @@ where
     type Error = S::Error;
     type Scheduler = Sc;
 
-    fn start<R>(self, receiver: R) where R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error> {
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
         self.input.start(TransferReceiver {
             next: receiver,
-            scheduler: self.scheduler
+            scheduler: self.scheduler,
         });
     }
 
@@ -81,6 +84,8 @@ impl<Next, SchedT> Receiver for TransferReceiver<Next, SchedT>
 where
     Next: 'static + Send + Receiver,
     SchedT: 'static + Send + Scheduler,
+    Next::Input: 'static + Send,
+    Next::Error: 'static + Send,
 {
     type Input = Next::Input;
     type Error = Next::Error;

@@ -1,6 +1,6 @@
-use crate::priv_sync::{Mutex};
-use crate::traits::{Receiver, Sender};
+use crate::priv_sync::Mutex;
 use crate::traits::receiver::DynReceiver;
+use crate::traits::{Receiver, Sender};
 use std::sync::Arc;
 
 struct InputHolderSetResult<T, E, R> {
@@ -33,7 +33,8 @@ impl<T, E, R: Receiver<Input = T, Error = E>> InputHolderSetResult<T, E, R> {
     }
 }
 
-impl<T: 'static + Send, E: 'static + Send> InputHolderSetResult<T, E, Box<dyn DynReceiver<Input=T, Error=E>>>
+impl<T: 'static + Send, E: 'static + Send>
+    InputHolderSetResult<T, E, Box<dyn DynReceiver<Input = T, Error = E>>>
 {
     fn consume(self) {
         if let Some((value, mut receiver)) = self.value_and_receiver {
@@ -66,7 +67,7 @@ impl<T, E> InputHolder<T, E> {
         if let Some(x) = self.value.take() {
             InputHolderSetResult::new(x, receiver)
         } else {
-            self.continuation = Some(Box::new(crate::traits::receiver::ReceiverRef::new(receiver)));
+            self.continuation = Some(Box::new(crate::utility::ReceiverRef::new(receiver)));
             InputHolderSetResult::empty()
         }
     }
@@ -95,7 +96,6 @@ struct SharedState<S: Sender> {
 }
 
 impl<S: Sender> SharedState<S> {
-
     fn new() -> Self {
         Self {
             state: Mutex::new(InputHolder::new()),
@@ -110,7 +110,10 @@ impl<S: Sender> SharedState<S> {
         .consume();
     }
 
-    fn on_continuation<R: 'static + Send + Receiver<Input = S::Output, Error = S::Error>>(&self, receiver: R) {
+    fn on_continuation<R: 'static + Send + Receiver<Input = S::Output, Error = S::Error>>(
+        &self,
+        receiver: R,
+    ) {
         { self.state.lock().set_continuation(receiver) }.consume();
     }
 
@@ -193,22 +196,21 @@ impl<S: 'static + Sender> Sender for EnsureStarted<S> {
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
+    use crate::test::ManualSender;
     use crate::SenderExt;
-    use crate::test::{ManualSender};
 
     #[test]
     fn continuation() {
-        let result = crate::factories::just(10).map(|x| {
-            x*2
-        }).ensure_started().map(|x| x + 3).sync_wait();
+        let result = crate::factories::just(10)
+            .map(|x| x * 2)
+            .ensure_started()
+            .map(|x| x + 3)
+            .sync_wait();
         assert_eq!(result.unwrap(), 23);
 
         let (sender, trigger) = ManualSender::new();
-        let sender = sender.map(|_| {
-            20
-        }).ensure_started().map(|x| x + 3);
+        let sender = sender.map(|_| 20).ensure_started().map(|x| x + 3);
         trigger.trigger();
         let result = sender.sync_wait();
         assert_eq!(result.unwrap(), 23);

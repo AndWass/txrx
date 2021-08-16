@@ -1,4 +1,4 @@
-use crate::traits::{Sender, Receiver as ReceiverT};
+use crate::traits::{Receiver as ReceiverT, Sender};
 use std::marker::PhantomData;
 
 pub struct Map<S, F> {
@@ -38,7 +38,10 @@ where
     type Scheduler = Src::Scheduler;
 
     #[inline]
-    fn start<R>(self, receiver: R) where R: 'static + Send + ReceiverT<Input=Self::Output, Error=Self::Error> {
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + ReceiverT<Input = Self::Output, Error = Self::Error>,
+    {
         self.sender.start(Receiver::new(receiver, self.func));
     }
 

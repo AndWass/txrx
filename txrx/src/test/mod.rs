@@ -1,10 +1,9 @@
-use std::sync::Arc;
-use crate::traits::{Sender, Receiver};
-use crate::ImmediateScheduler;
 use crate::priv_sync::Mutex;
+use crate::traits::{Receiver, Sender};
+use crate::ImmediateScheduler;
+use std::sync::Arc;
 
-pub struct ManualTrigger
-{
+pub struct ManualTrigger {
     trigger_function: Mutex<Box<dyn FnMut() + Send>>,
 }
 
@@ -20,22 +19,18 @@ impl ManualTrigger {
         (**lock)();
     }
 
-    fn set_trigger(&self, trigger: impl FnMut() + Send + 'static)
-    {
+    fn set_trigger(&self, trigger: impl FnMut() + Send + 'static) {
         let mut lock = self.trigger_function.lock();
         *lock = Box::new(trigger);
     }
 }
 
-pub struct ManualSender
-{
+pub struct ManualSender {
     trigger: Arc<ManualTrigger>,
 }
 
-impl ManualSender
-{
-    pub fn new() -> (Self, Arc<ManualTrigger>)
-    {
+impl ManualSender {
+    pub fn new() -> (Self, Arc<ManualTrigger>) {
         let trigger = Arc::new(ManualTrigger::new());
         let self_ret = Self {
             trigger: trigger.clone(),
@@ -50,7 +45,10 @@ impl Sender for ManualSender {
     type Error = ();
     type Scheduler = ImmediateScheduler;
 
-    fn start<R>(self, receiver: R) where R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error> {
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+    {
         let mut receiver = Some(receiver);
         self.trigger.set_trigger(move || {
             if let Some(r) = receiver.take() {
@@ -65,8 +63,7 @@ impl Sender for ManualSender {
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use crate::test::ManualSender;
     use crate::SenderExt;
 
