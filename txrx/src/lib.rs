@@ -9,6 +9,8 @@ pub(crate) mod priv_sync;
 
 mod immediate_scheduler;
 
+pub mod test;
+
 pub use consumers::start_detached::start_detached;
 pub use consumers::sync_wait::sync_wait;
 pub use immediate_scheduler::ImmediateScheduler;
@@ -45,10 +47,10 @@ mod tests {
             .schedule()
             .map(|_| 2)
             .map(|x| 2 * x)
-            .into_future();
+            .ensure_started();
         assert!(!res.is_complete());
         assert!(runner.run_one());
-        assert_eq!(res.try_get().unwrap().unwrap().unwrap(), 4);
+        assert_eq!(res.sync_wait().unwrap(), 4);
     }
 
     #[test]
@@ -62,12 +64,12 @@ mod tests {
             .map(|_| 2)
             .map(|x| 2 * x)
             .transfer(exec2.scheduler())
-            .into_future();
+            .ensure_started();
         assert!(!res.is_complete());
         assert!(exec.runner().run_one());
         assert!(!res.is_complete());
         assert!(exec2.runner().run_one());
         assert!(res.is_complete());
-        assert_eq!(res.try_get().unwrap().unwrap().unwrap(), 4);
+        assert_eq!(res.sync_wait().unwrap(), 4);
     }
 }

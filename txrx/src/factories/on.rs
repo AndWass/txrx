@@ -56,10 +56,10 @@ mod tests {
     fn on_manual_executor() {
         let exec = crate::manual_executor::ManualExecutor::new();
 
-        let fut = On::new(exec.scheduler(), crate::factories::just(10)).into_future();
+        let fut = On::new(exec.scheduler(), crate::factories::just(10)).ensure_started();
         assert!(!fut.is_complete());
         assert!(exec.runner().run_one());
         assert!(fut.is_complete());
-        assert_eq!(fut.try_get().unwrap().unwrap().unwrap(), 10);
+        assert_eq!(fut.sync_wait().unwrap(), 10);
     }
 }

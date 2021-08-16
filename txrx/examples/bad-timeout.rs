@@ -83,7 +83,7 @@ fn main() {
             println!("Now = {:?}", std::time::Instant::now());
             println!("Woken up on {:?}", std::thread::current().id());
         })
-        .into_future();
+        .ensure_started();
 
     while !fut.is_complete() {
         exec.runner().run_one();

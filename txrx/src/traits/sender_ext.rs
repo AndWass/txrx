@@ -2,7 +2,7 @@ use crate::adaptors::and_then::AndThen;
 use crate::adaptors::bulk::Bulk;
 use crate::adaptors::map::Map;
 use crate::adaptors::transfer::Transfer;
-use crate::consumers::future::Future;
+use crate::adaptors::ensure_started::EnsureStarted;
 use crate::traits::Sender;
 
 mod sealed {
@@ -26,8 +26,8 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     }
 
     #[inline]
-    fn into_future(self) -> Future<Self> {
-        Future::new(self)
+    fn ensure_started(self) -> EnsureStarted<Self> {
+        EnsureStarted::new(self)
     }
 
     #[inline]

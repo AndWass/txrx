@@ -167,10 +167,8 @@ mod tests {
         let fut = executor
             .scheduler()
             .schedule()
-            .bulk(executor.scheduler(), 2, |_step, _| {})
-            .into_future();
-        assert!(!fut.is_complete());
-        assert!(executor.runner().run_one());
+            .bulk( 2, |_step, _| {})
+            .ensure_started();
         assert!(!fut.is_complete());
         assert!(executor.runner().run_one());
         assert!(!fut.is_complete());
