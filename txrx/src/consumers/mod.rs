@@ -3,3 +3,4 @@ pub use sync_wait::sync_wait;
 
 pub mod start_detached;
 pub mod sync_wait;
+pub mod into_awaitable;

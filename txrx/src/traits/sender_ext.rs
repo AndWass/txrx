@@ -4,6 +4,7 @@ use crate::adaptors::ensure_started::EnsureStarted;
 use crate::adaptors::map::Map;
 use crate::adaptors::transfer::Transfer;
 use crate::traits::Sender;
+use crate::consumers::into_awaitable::Awaitable;
 
 mod sealed {
     use crate::traits::Sender;
@@ -46,6 +47,11 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
         Func: Fn(usize, Self::Output),
     {
         Bulk::new(self, size, func)
+    }
+
+    /// Starts the sender and returns an awaitable that be used to retrieve the result.
+    fn into_awaitable(self) -> Awaitable<Self> {
+        Awaitable::new(self)
     }
 }
 

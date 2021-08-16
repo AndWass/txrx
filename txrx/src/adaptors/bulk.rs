@@ -155,7 +155,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::traits::Scheduler;
-    use crate::SenderExt;
+    use crate::traits::SenderExt;
 
     #[test]
     fn bulk_test() {
