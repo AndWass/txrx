@@ -48,11 +48,18 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     }
 
     #[inline]
-    fn bulk<Func>(self, size: usize, func: Func) -> Bulk<Self, Func>
+    fn bulk<ArgGenerator, Func, FuncArgs>(
+        self,
+        size: usize,
+        arg_generator: ArgGenerator,
+        func: Func,
+    ) -> Bulk<Self, Func, ArgGenerator>
     where
-        Func: Fn(usize, Self::Output),
+        ArgGenerator: FnMut(usize, &mut Self::Output) -> FuncArgs,
+        Func: Fn(usize, FuncArgs),
+        Bulk<Self, Func, ArgGenerator>: Sender,
     {
-        Bulk::new(self, size, func)
+        Bulk::new(self, size, arg_generator, func)
     }
 
     /// Starts the sender and returns an awaitable that be used to retrieve the result.

@@ -1,26 +1,34 @@
 use crate::traits::{Receiver, Sender, Work};
 use std::cell::UnsafeCell;
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-pub struct Bulk<InputSender, Func> {
+pub struct Bulk<InputSender, Func, ArgGenerator> {
     input: InputSender,
     size: usize,
     func: Func,
+    arg_generator: ArgGenerator,
 }
 
-impl<InputSender, Func> Bulk<InputSender, Func> {
+impl<InputSender, Func, ArgGenerator> Bulk<InputSender, Func, ArgGenerator> {
     #[inline]
-    pub fn new(input: InputSender, size: usize, func: Func) -> Self {
-        Self { input, size, func }
+    pub fn new(input: InputSender, size: usize, arg_generator: ArgGenerator, func: Func) -> Self {
+        Self {
+            input,
+            size,
+            func,
+            arg_generator,
+        }
     }
 }
 
-impl<InputSender, Func> Sender for Bulk<InputSender, Func>
+impl<InputSender, Func, ArgGenerator, BulkArgs> Sender for Bulk<InputSender, Func, ArgGenerator>
 where
     InputSender: Sender,
-    InputSender::Output: Clone,
-    Func: 'static + Send + Sync + Clone + Fn(usize, InputSender::Output),
+    ArgGenerator: 'static + Send + Fn(usize, &mut InputSender::Output) -> BulkArgs,
+    Func: 'static + Send + Sync + Clone + Fn(usize, BulkArgs),
+    BulkArgs: 'static + Send,
 {
     type Output = InputSender::Output;
     type Error = InputSender::Error;
@@ -37,6 +45,8 @@ where
             amount: self.size,
             next: receiver,
             scheduler,
+            arg_generator: self.arg_generator,
+            _phantom: PhantomData,
         });
     }
 
@@ -46,20 +56,25 @@ where
     }
 }
 
-pub struct BulkReceiver<R, Func, Scheduler> {
+pub struct BulkReceiver<R, Func, Scheduler, ArgGenerator, BulkArgs> {
     func: Func,
     amount: usize,
     next: R,
     scheduler: Scheduler,
+    arg_generator: ArgGenerator,
+    _phantom: PhantomData<BulkArgs>,
 }
 
-impl<R, Func, Scheduler> Receiver for BulkReceiver<R, Func, Scheduler>
+impl<R, Func, Scheduler, ArgGenerator, BulkArgs> Receiver
+    for BulkReceiver<R, Func, Scheduler, ArgGenerator, BulkArgs>
 where
     R: 'static + Send + Receiver,
-    R::Input: Clone + Send,
-    Func: 'static + Clone + Send + Sync + Fn(usize, R::Input),
+    R::Input: Send,
+    ArgGenerator: 'static + Send + Fn(usize, &mut R::Input) -> BulkArgs,
+    Func: 'static + Clone + Send + Sync + Fn(usize, BulkArgs),
     Scheduler: crate::traits::Scheduler,
-    BulkWork<Func, R>: Work,
+    BulkArgs: 'static + Send,
+    BulkWork<Func, R, BulkArgs>: Work,
 {
     type Input = R::Input;
     type Error = R::Error;
@@ -67,24 +82,33 @@ where
     #[inline]
     fn set_value(mut self, value: Self::Input) {
         if self.amount > 0 {
-            let end_reporter = Arc::new(EndReporter::new(self.amount, self.next, value.clone()));
-            let func = Arc::new(self.func);
-            for x in 0..self.amount - 1 {
-                let work = BulkWork {
-                    input: value.clone(),
-                    step: x,
-                    func: func.clone(),
-                    end_reporter: end_reporter.clone(),
-                };
+            {
+                let end_reporter = Arc::new(EndReporter::new(self.amount, self.next, value));
 
-                self.scheduler.execute(work);
-            }
+                // End reporter will not touch value until
+                // all bulk work has completed. And all bulk work cannot complete until
+                // the last execute in this block function has finished. We have made sure to "release" the
+                // references at that point!
+                let (_, value) = unsafe { &mut *end_reporter.next.get() }.as_mut().unwrap();
 
-            BulkWork {
-                input: value,
-                step: self.amount - 1,
-                func,
-                end_reporter,
+                let func = Arc::new(self.func);
+                for x in 0..self.amount - 1 {
+                    let work = BulkWork {
+                        input: (self.arg_generator)(x, value),
+                        step: x,
+                        func: func.clone(),
+                        end_reporter: end_reporter.clone(),
+                    };
+
+                    self.scheduler.execute(work);
+                }
+
+                BulkWork {
+                    input: (self.arg_generator)(self.amount - 1, value),
+                    step: self.amount - 1,
+                    func,
+                    end_reporter,
+                }
             }
             .execute();
         } else {
@@ -132,18 +156,19 @@ impl<Next: Receiver> EndReporter<Next> {
     }
 }
 
-pub struct BulkWork<Func, Next: Receiver> {
+pub struct BulkWork<Func, Next: Receiver, Input> {
     func: Arc<Func>,
-    input: Next::Input,
+    input: Input,
     step: usize,
 
     end_reporter: Arc<EndReporter<Next>>,
 }
 
-impl<Func, Next> Work for BulkWork<Func, Next>
+impl<Func, Next, Input> Work for BulkWork<Func, Next, Input>
 where
     Next: Receiver,
-    Func: Clone + Send + Sync + Fn(usize, Next::Input),
+    Func: Send + Sync + Fn(usize, Input),
+    Input: Send,
 {
     #[inline]
     fn execute(self) {
@@ -163,7 +188,7 @@ mod tests {
         let fut = executor
             .scheduler()
             .schedule()
-            .bulk(2, |_step, _| {})
+            .bulk(2, |_, _| {}, |_step, _| {})
             .ensure_started();
         assert!(!fut.is_complete());
         assert!(executor.runner().run_one());
