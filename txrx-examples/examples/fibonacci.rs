@@ -61,7 +61,6 @@ fn main() {
                 (0..((90 - STEPS + 1) / STEPS)).for_each(|_| {
                     result_slot.step();
                 });
-                test(result_slot);
             },
         )
         .map(|mut x| {
