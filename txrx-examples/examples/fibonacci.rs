@@ -49,7 +49,7 @@ fn main() {
             // This is safe since bulk guarantees that the input value is alive for the entire
             // bulk operation, and we don't form multiple mut references to the same index
             // and result_slot doesn't escape the func closure.
-            |x, input: &'static mut [FibonacciMatrix; 4]| unsafe {
+            |x, input| unsafe {
                 &mut *(input.as_mut_ptr().add(x))
             },
             move |step, result_slot| {
