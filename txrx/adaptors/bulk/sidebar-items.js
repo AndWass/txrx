@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Bulk",""],["BulkReceiver",""],["BulkWork",""]]});
+initSidebarItems({"struct":[["Bulk","Sender for invoking a function with the values sent by the input sender multiple times. See `bulk()` for details."]]});
