@@ -17,12 +17,11 @@ where
     SenderT: 'static + Send + Sender,
 {
     type Output = SenderT::Output;
-    type Error = SenderT::Error;
     type Scheduler = SchedulerT;
 
     fn start<R>(mut self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         self.scheduler.execute(OnWork {
             sender: self.sender,
@@ -43,7 +42,7 @@ pub struct OnWork<SenderT, ReceiverT> {
 impl<SenderT, ReceiverT> Work for OnWork<SenderT, ReceiverT>
 where
     SenderT: Sender,
-    ReceiverT: 'static + Send + Receiver<Input = SenderT::Output, Error = SenderT::Error>,
+    ReceiverT: 'static + Send + Receiver<Input = SenderT::Output>,
 {
     fn execute(self) {
         self.sender.start(self.receiver);

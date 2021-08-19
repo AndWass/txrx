@@ -3,25 +3,25 @@ use crate::traits::receiver::DynReceiver;
 use crate::traits::{Receiver, Sender};
 use std::sync::Arc;
 
-struct InputHolderSetResult<T, E, R> {
-    value_and_receiver: Option<(ReceiverInput<T, E>, R)>,
+struct InputHolderSetResult<T, R> {
+    value_and_receiver: Option<(ReceiverInput<T>, R)>,
 }
 
-impl<T, E, R> InputHolderSetResult<T, E, R> {
+impl<T, R> InputHolderSetResult<T, R> {
     fn empty() -> Self {
         Self {
             value_and_receiver: None,
         }
     }
 
-    fn new(value: ReceiverInput<T, E>, receiver: R) -> Self {
+    fn new(value: ReceiverInput<T>, receiver: R) -> Self {
         Self {
             value_and_receiver: Some((value, receiver)),
         }
     }
 }
 
-impl<T, E, R: Receiver<Input = T, Error = E>> InputHolderSetResult<T, E, R> {
+impl<T, R: Receiver<Input = T>> InputHolderSetResult<T, R> {
     fn consume(self) {
         if let Some((value, receiver)) = self.value_and_receiver {
             match value {
@@ -33,9 +33,7 @@ impl<T, E, R: Receiver<Input = T, Error = E>> InputHolderSetResult<T, E, R> {
     }
 }
 
-impl<T: 'static + Send, E: 'static + Send>
-    InputHolderSetResult<T, E, Box<dyn DynReceiver<Input = T, Error = E>>>
-{
+impl<T: 'static + Send> InputHolderSetResult<T, Box<dyn DynReceiver<Input = T>>> {
     fn consume(self) {
         if let Some((value, mut receiver)) = self.value_and_receiver {
             match value {
@@ -47,12 +45,12 @@ impl<T: 'static + Send, E: 'static + Send>
     }
 }
 
-struct InputHolder<T, E> {
-    value: Option<ReceiverInput<T, E>>,
-    continuation: Option<Box<dyn Send + DynReceiver<Input = T, Error = E>>>,
+struct InputHolder<T> {
+    value: Option<ReceiverInput<T>>,
+    continuation: Option<Box<dyn Send + DynReceiver<Input = T>>>,
 }
 
-impl<T, E> InputHolder<T, E> {
+impl<T> InputHolder<T> {
     fn new() -> Self {
         Self {
             value: None,
@@ -60,10 +58,10 @@ impl<T, E> InputHolder<T, E> {
         }
     }
 
-    fn set_continuation<R: 'static + Send + Receiver<Input = T, Error = E>>(
+    fn set_continuation<R: 'static + Send + Receiver<Input = T>>(
         &mut self,
         receiver: R,
-    ) -> InputHolderSetResult<T, E, R> {
+    ) -> InputHolderSetResult<T, R> {
         if let Some(x) = self.value.take() {
             InputHolderSetResult::new(x, receiver)
         } else {
@@ -74,8 +72,8 @@ impl<T, E> InputHolder<T, E> {
 
     fn set_value(
         &mut self,
-        value: ReceiverInput<T, E>,
-    ) -> InputHolderSetResult<T, E, Box<dyn DynReceiver<Input = T, Error = E>>> {
+        value: ReceiverInput<T>,
+    ) -> InputHolderSetResult<T, Box<dyn DynReceiver<Input = T>>> {
         if let Some(receiver) = self.continuation.take() {
             InputHolderSetResult::new(value, receiver)
         } else {
@@ -85,14 +83,14 @@ impl<T, E> InputHolder<T, E> {
     }
 }
 
-enum ReceiverInput<T, E> {
+enum ReceiverInput<T> {
     Value(T),
-    Error(E),
+    Error(crate::Error),
     Cancelled,
 }
 
 struct SharedState<S: Sender> {
-    state: Mutex<InputHolder<S::Output, S::Error>>,
+    state: Mutex<InputHolder<S::Output>>,
 }
 
 impl<S: Sender> SharedState<S> {
@@ -102,7 +100,7 @@ impl<S: Sender> SharedState<S> {
         }
     }
 
-    fn on_input(&self, input: ReceiverInput<S::Output, S::Error>) {
+    fn on_input(&self, input: ReceiverInput<S::Output>) {
         {
             let mut lock = self.state.lock();
             lock.set_value(input)
@@ -110,10 +108,7 @@ impl<S: Sender> SharedState<S> {
         .consume();
     }
 
-    fn on_continuation<R: 'static + Send + Receiver<Input = S::Output, Error = S::Error>>(
-        &self,
-        receiver: R,
-    ) {
+    fn on_continuation<R: 'static + Send + Receiver<Input = S::Output>>(&self, receiver: R) {
         { self.state.lock().set_continuation(receiver) }.consume();
     }
 
@@ -139,13 +134,12 @@ impl<S: Sender> ReceiverType<S> {
 
 impl<S: Sender> Receiver for ReceiverType<S> {
     type Input = S::Output;
-    type Error = S::Error;
 
     fn set_value(self, value: Self::Input) {
         self.state.on_input(ReceiverInput::Value(value))
     }
 
-    fn set_error(self, error: Self::Error) {
+    fn set_error(self, error: crate::Error) {
         self.state.on_input(ReceiverInput::Error(error))
     }
 
@@ -180,12 +174,11 @@ impl<S: 'static + Sender> EnsureStarted<S> {
 
 impl<S: 'static + Sender> Sender for EnsureStarted<S> {
     type Output = S::Output;
-    type Error = S::Error;
     type Scheduler = S::Scheduler;
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         self.state.on_continuation(receiver);
     }

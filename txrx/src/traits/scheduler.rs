@@ -39,13 +39,12 @@ impl<S, W> ExecuteReceiver<S, W> {
 
 impl<S: Sender, W: Work> Receiver for ExecuteReceiver<S, W> {
     type Input = S::Output;
-    type Error = S::Error;
 
     fn set_value(self, _value: Self::Input) {
         self.work.execute();
     }
 
-    fn set_error(self, _error: Self::Error) {}
+    fn set_error(self, _error: crate::Error) {}
 
     fn set_cancelled(self) {}
 }

@@ -42,12 +42,11 @@ impl ManualSender {
 
 impl Sender for ManualSender {
     type Output = ();
-    type Error = ();
     type Scheduler = ImmediateScheduler;
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         let mut receiver = Some(receiver);
         self.trigger.set_trigger(move || {

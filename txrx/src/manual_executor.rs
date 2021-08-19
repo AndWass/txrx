@@ -90,12 +90,11 @@ pub struct ScheduledSender {
 
 impl crate::traits::Sender for ScheduledSender {
     type Output = ();
-    type Error = ();
     type Scheduler = Scheduler;
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         self.inner.add(move || {
             receiver.set_value(());

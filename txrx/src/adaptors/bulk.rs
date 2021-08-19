@@ -31,13 +31,12 @@ where
     BulkOutput: 'static + Send,
 {
     type Output = (Input::Output, Vec<BulkOutput>);
-    type Error = Input::Error;
     type Scheduler = Input::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         let scheduler = self.input.get_scheduler();
         self.input.start(BulkReceiver::new(
@@ -99,7 +98,6 @@ where
     BulkOutput: 'static + Send,
 {
     type Input = InputData;
-    type Error = NextReceiver::Error;
 
     #[inline]
     fn set_value(mut self, value: Self::Input) {
@@ -149,7 +147,7 @@ where
     }
 
     #[inline]
-    fn set_error(self, error: Self::Error) {
+    fn set_error(self, error: crate::Error) {
         self.next_receiver.set_error(error);
     }
 

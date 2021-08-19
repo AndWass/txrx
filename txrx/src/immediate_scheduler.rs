@@ -20,12 +20,11 @@ impl Scheduler for ImmediateScheduler {
 
 impl Sender for ImmediateScheduler {
     type Output = ();
-    type Error = ();
     type Scheduler = Self;
 
     fn start<R>(self, receiver: R)
     where
-        R: Receiver<Input = Self::Output, Error = Self::Error>,
+        R: Receiver<Input = Self::Output>,
     {
         receiver.set_value(());
     }

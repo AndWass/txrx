@@ -25,11 +25,10 @@ impl<S> SinkFor<S> {
 
 impl<S: 'static + Send + Sender> Receiver for SinkFor<S> {
     type Input = S::Output;
-    type Error = S::Error;
 
     fn set_value(self, _value: Self::Input) {}
 
-    fn set_error(self, _error: Self::Error) {
+    fn set_error(self, _error: crate::Error) {
         let _drop = DropPanic;
         panic!("Sink error!");
     }
