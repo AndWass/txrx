@@ -75,8 +75,6 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
@@ -96,16 +94,15 @@
 <span class="kw">where</span>
     <span class="ident">Input</span>: <span class="ident">Sender</span>,
     <span class="ident">Func</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">FnOnce</span>(<span class="ident">Input::Output</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">NextSender</span>,
-    <span class="ident">NextSender</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Error</span> <span class="op">=</span> <span class="ident">Input::Error</span><span class="op">&gt;</span>,
+    <span class="ident">NextSender</span>: <span class="ident">Sender</span>,
 {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">NextSender::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">NextSender::Error</span>;
     <span class="kw">type</span> <span class="ident">Scheduler</span> <span class="op">=</span> <span class="ident">Input::Scheduler</span>;
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">start</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">receiver</span>: <span class="ident">R</span>)
     <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>,
+        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">input</span>.<span class="ident">start</span>(<span class="ident">AndThenReceiver::new</span>(<span class="self">self</span>.<span class="ident">func</span>, <span class="ident">receiver</span>));
     }
@@ -136,11 +133,10 @@
 <span class="kw">where</span>
     <span class="ident">Func</span>: <span class="ident">FnOnce</span>(<span class="ident">Input</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ret</span>,
     <span class="ident">Ret</span>: <span class="ident">Sender</span>,
-    <span class="ident">NextReceiver</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident">Ret::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Ret::Error</span><span class="op">&gt;</span>,
+    <span class="ident">NextReceiver</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident">Ret::Output</span><span class="op">&gt;</span>,
     <span class="ident">Input</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span>,
 {
     <span class="kw">type</span> <span class="ident">Input</span> <span class="op">=</span> <span class="ident">Input</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">NextReceiver::Error</span>;
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">set_value</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Input</span>) {
@@ -148,7 +144,7 @@
     }
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="self">Self</span>::Error</span>) {
+    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
         <span class="self">self</span>.<span class="ident">next</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
     }
 

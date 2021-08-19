@@ -35,7 +35,6 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
-<span id="38">38</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
@@ -64,11 +63,10 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sender</span><span class="op">&gt;</span> <span class="ident">Receiver</span> <span class="kw">for</span> <span class="ident">SinkFor</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Input</span> <span class="op">=</span> <span class="ident">S::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">S::Error</span>;
 
     <span class="kw">fn</span> <span class="ident">set_value</span>(<span class="self">self</span>, <span class="ident">_value</span>: <span class="ident"><span class="self">Self</span>::Input</span>) {}
 
-    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">_error</span>: <span class="ident"><span class="self">Self</span>::Error</span>) {
+    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">_error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
         <span class="kw">let</span> <span class="ident">_drop</span> <span class="op">=</span> <span class="ident">DropPanic</span>;
         <span class="macro">panic!</span>(<span class="string">&quot;Sink error!&quot;</span>);
     }

@@ -264,11 +264,6 @@
 <span id="264">264</span>
 <span id="265">265</span>
 <span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 
@@ -319,7 +314,7 @@
     <span class="kw">where</span>
         <span class="ident">Left</span>: <span class="ident">Sender</span>,
         <span class="ident">Right</span>: <span class="ident">Sender</span>,
-        <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Left::Error</span><span class="op">&gt;</span>,
+        <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>)<span class="op">&gt;</span>,
     {
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">lock</span>();
@@ -329,7 +324,7 @@
             }
         }
 
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">error</span>: <span class="ident">Left::Error</span>) {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">lock</span>();
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">next</span>) <span class="op">=</span> <span class="ident">lock</span>.<span class="ident">next</span>.<span class="ident">take</span>() {
                 <span class="ident">drop</span>(<span class="ident">lock</span>);
@@ -396,15 +391,13 @@
 <span class="kw">where</span>
     <span class="ident">Left</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Sender</span>,
     <span class="ident">Right</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Sender</span>,
-    <span class="ident">Right::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Left::Error</span><span class="op">&gt;</span>,
 {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>);
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Left::Error</span>;
     <span class="kw">type</span> <span class="ident">Scheduler</span> <span class="op">=</span> <span class="ident">Left::Scheduler</span>;
 
     <span class="kw">fn</span> <span class="ident">start</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">receiver</span>: <span class="ident">R</span>)
     <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>,
+        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span>,
     {
         <span class="kw">let</span> <span class="ident">scheduler</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">left</span>.<span class="ident">get_scheduler</span>();
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">hidden::SharedState</span>::<span class="op">&lt;</span><span class="ident">Left</span>, <span class="ident">Right</span>, <span class="ident">R</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">receiver</span>, <span class="ident">scheduler</span>);
@@ -431,16 +424,15 @@
 <span class="kw">where</span>
     <span class="ident">Left</span>: <span class="ident">Sender</span>,
     <span class="ident">Right</span>: <span class="ident">Sender</span>,
-    <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Left::Error</span><span class="op">&gt;</span>,
+    <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>)<span class="op">&gt;</span>,
 {
     <span class="kw">type</span> <span class="ident">Input</span> <span class="op">=</span> <span class="ident">Left::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Left::Error</span>;
 
     <span class="kw">fn</span> <span class="ident">set_value</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Input</span>) {
         <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_value</span>(<span class="prelude-val">Some</span>(<span class="ident">value</span>), <span class="prelude-val">None</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="self">Self</span>::Error</span>) {
+    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
         <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
     }
 
@@ -457,18 +449,16 @@
 <span class="kw">where</span>
     <span class="ident">Left</span>: <span class="ident">Sender</span>,
     <span class="ident">Right</span>: <span class="ident">Sender</span>,
-    <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Left::Error</span><span class="op">&gt;</span>,
-    <span class="ident">Right::Error</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">Left::Error</span><span class="op">&gt;</span>,
+    <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>)<span class="op">&gt;</span>,
 {
     <span class="kw">type</span> <span class="ident">Input</span> <span class="op">=</span> <span class="ident">Right::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Right::Error</span>;
 
     <span class="kw">fn</span> <span class="ident">set_value</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Input</span>) {
         <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_value</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">value</span>));
     }
 
-    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="self">Self</span>::Error</span>) {
-        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>.<span class="ident">into</span>());
+    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
+        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="self">self</span>) {

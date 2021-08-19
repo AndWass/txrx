@@ -99,9 +99,6 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Scheduler</span>, <span class="ident">Sender</span>, <span class="ident">Work</span>};
 
@@ -122,12 +119,11 @@
     <span class="ident">Sc</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Scheduler</span>,
 {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">S::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">S::Error</span>;
     <span class="kw">type</span> <span class="ident">Scheduler</span> <span class="op">=</span> <span class="ident">Sc</span>;
 
     <span class="kw">fn</span> <span class="ident">start</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">receiver</span>: <span class="ident">R</span>)
     <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>,
+        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">input</span>.<span class="ident">start</span>(<span class="ident">TransferReceiver</span> {
             <span class="ident">next</span>: <span class="ident">receiver</span>,
@@ -142,7 +138,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TransferJob</span><span class="op">&lt;</span><span class="ident">Next</span>: <span class="ident">Receiver</span><span class="op">&gt;</span> {
     <span class="ident">next</span>: <span class="ident">Next</span>,
-    <span class="ident">data</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Next::Input</span><span class="op">&gt;</span>, <span class="ident">Next::Error</span><span class="op">&gt;</span>,
+    <span class="ident">data</span>: <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span><span class="ident">Next::Input</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Next</span>: <span class="ident">Receiver</span><span class="op">&gt;</span> <span class="ident">TransferJob</span><span class="op">&lt;</span><span class="ident">Next</span><span class="op">&gt;</span> {
@@ -153,7 +149,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">error</span>(<span class="ident">next</span>: <span class="ident">Next</span>, <span class="ident">err</span>: <span class="ident">Next::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">error</span>(<span class="ident">next</span>: <span class="ident">Next</span>, <span class="ident">err</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">next</span>,
             <span class="ident">data</span>: <span class="prelude-val">Err</span>(<span class="ident">err</span>),
@@ -190,16 +186,14 @@
     <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span>,
     <span class="ident">SchedT</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Scheduler</span>,
     <span class="ident">Next::Input</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span>,
-    <span class="ident">Next::Error</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span>,
 {
     <span class="kw">type</span> <span class="ident">Input</span> <span class="op">=</span> <span class="ident">Next::Input</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Next::Error</span>;
 
     <span class="kw">fn</span> <span class="ident">set_value</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident"><span class="self">Self</span>::Input</span>) {
         <span class="self">self</span>.<span class="ident">scheduler</span>.<span class="ident">execute</span>(<span class="ident">TransferJob::value</span>(<span class="self">self</span>.<span class="ident">next</span>, <span class="ident">value</span>));
     }
 
-    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="self">Self</span>::Error</span>) {
+    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
         <span class="self">self</span>.<span class="ident">scheduler</span>.<span class="ident">execute</span>(<span class="ident">TransferJob::error</span>(<span class="self">self</span>.<span class="ident">next</span>, <span class="ident">error</span>));
     }
 

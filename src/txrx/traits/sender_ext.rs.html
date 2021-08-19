@@ -155,7 +155,6 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
-<span id="158">158</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::adaptors::and_then::AndThen</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::adaptors::bulk::Bulk</span>;
@@ -182,7 +181,7 @@
         <span class="ident">Map::new</span>(<span class="self">self</span>, <span class="ident">func</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">sync_wait</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::consumers::sync_wait::Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Output</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">sync_wait</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::consumers::sync_wait::WaitResult</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::sync_wait</span>(<span class="self">self</span>)
     }
 
@@ -251,12 +250,11 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// impl Sender for NewThreadScheduler {</span>
     <span class="doccomment">///     type Output = ();</span>
-    <span class="doccomment">///     type Error = ();</span>
     <span class="doccomment">///     type Scheduler = Self;</span>
     <span class="doccomment">///</span>
     <span class="doccomment">///     fn start&lt;R&gt;(self, receiver: R)</span>
     <span class="doccomment">///     where</span>
-    <span class="doccomment">///         R: &#39;static + Send + Receiver&lt;Input=Self::Output, Error=Self::Error&gt;</span>
+    <span class="doccomment">///         R: &#39;static + Send + Receiver&lt;Input=Self::Output&gt;</span>
     <span class="doccomment">///     {</span>
     <span class="doccomment">///         std::thread::spawn(move || { receiver.set_value(()) });</span>
     <span class="doccomment">///     }</span>

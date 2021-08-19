@@ -48,7 +48,6 @@
 <span id="48">48</span>
 <span id="49">49</span>
 <span id="50">50</span>
-<span id="51">51</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
@@ -91,13 +90,12 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">Sender</span>, <span class="ident">W</span>: <span class="ident">Work</span><span class="op">&gt;</span> <span class="ident">Receiver</span> <span class="kw">for</span> <span class="ident">ExecuteReceiver</span><span class="op">&lt;</span><span class="ident">S</span>, <span class="ident">W</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Input</span> <span class="op">=</span> <span class="ident">S::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">S::Error</span>;
 
     <span class="kw">fn</span> <span class="ident">set_value</span>(<span class="self">self</span>, <span class="ident">_value</span>: <span class="ident"><span class="self">Self</span>::Input</span>) {
         <span class="self">self</span>.<span class="ident">work</span>.<span class="ident">execute</span>();
     }
 
-    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">_error</span>: <span class="ident"><span class="self">Self</span>::Error</span>) {}
+    <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">_error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {}
 
     <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="self">self</span>) {}
 }

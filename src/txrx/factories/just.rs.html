@@ -29,7 +29,6 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
-<span id="32">32</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ImmediateScheduler</span>;
@@ -49,12 +48,11 @@
     <span class="ident">T</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span>,
 {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">T</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> ();
     <span class="kw">type</span> <span class="ident">Scheduler</span> <span class="op">=</span> <span class="ident">ImmediateScheduler</span>;
 
     <span class="kw">fn</span> <span class="ident">start</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">receiver</span>: <span class="ident">R</span>)
     <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>,
+        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span>,
     {
         <span class="ident">receiver</span>.<span class="ident">set_value</span>(<span class="self">self</span>.<span class="ident">data</span>);
     }

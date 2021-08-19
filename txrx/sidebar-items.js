@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["adaptors",""],["consumers",""],["factories",""],["manual_executor",""],["test",""],["traits",""],["utility",""]],"struct":[["ImmediateScheduler",""]],"trait":[["SenderExt",""]]});
+initSidebarItems({"mod":[["adaptors",""],["consumers",""],["factories",""],["manual_executor",""],["test",""],["traits",""],["utility",""]],"struct":[["ImmediateScheduler",""]],"trait":[["SenderExt",""]],"type":[["Error",""],["Result",""]]});

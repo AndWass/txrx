@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Result",""]],"fn":[["sync_wait",""]],"struct":[["Recv",""],["State",""]]});
+initSidebarItems({"enum":[["WaitResult",""]],"fn":[["sync_wait",""]],"struct":[["Recv",""],["State",""]]});

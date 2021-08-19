@@ -65,7 +65,6 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
-<span id="68">68</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Scheduler</span>, <span class="ident">Sender</span>, <span class="ident">Work</span>};
 
@@ -86,12 +85,11 @@
     <span class="ident">SenderT</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sender</span>,
 {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">SenderT::Output</span>;
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">SenderT::Error</span>;
     <span class="kw">type</span> <span class="ident">Scheduler</span> <span class="op">=</span> <span class="ident">SchedulerT</span>;
 
     <span class="kw">fn</span> <span class="ident">start</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">receiver</span>: <span class="ident">R</span>)
     <span class="kw">where</span>
-        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span>,
+        <span class="ident">R</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Output</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">scheduler</span>.<span class="ident">execute</span>(<span class="ident">OnWork</span> {
             <span class="ident">sender</span>: <span class="self">self</span>.<span class="ident">sender</span>,
@@ -112,7 +110,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SenderT</span>, <span class="ident">ReceiverT</span><span class="op">&gt;</span> <span class="ident">Work</span> <span class="kw">for</span> <span class="ident">OnWork</span><span class="op">&lt;</span><span class="ident">SenderT</span>, <span class="ident">ReceiverT</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">SenderT</span>: <span class="ident">Sender</span>,
-    <span class="ident">ReceiverT</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident">SenderT::Output</span>, <span class="ident">Error</span> <span class="op">=</span> <span class="ident">SenderT::Error</span><span class="op">&gt;</span>,
+    <span class="ident">ReceiverT</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> <span class="ident">SenderT::Output</span><span class="op">&gt;</span>,
 {
     <span class="kw">fn</span> <span class="ident">execute</span>(<span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">start</span>(<span class="self">self</span>.<span class="ident">receiver</span>);
