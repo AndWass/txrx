@@ -42,28 +42,22 @@ fn main() {
 
     let result = scheduler
         .schedule()
-        .map(|_| [FibonacciMatrix::new(); STEPS]) // Create result holder
-        .bulk(
-            STEPS,
-            // Create STEPS result slots
-            // This is safe since bulk guarantees that the input value is alive for the entire
-            // bulk operation, and we don't form multiple mut references to the same index
-            // and result_slot doesn't escape the func closure.
-            |x, input| unsafe { &mut *(input.as_mut_ptr().add(x)) },
-            move |step, result_slot| {
-                println!(
-                    "Calculating step {} on thread {:?}",
-                    step,
-                    std::thread::current().id()
-                );
-                (0..((90 - STEPS + 1) / STEPS)).for_each(|_| {
-                    result_slot.step();
-                });
-            },
-        )
-        .map(|mut x| {
+        .bulk(STEPS, move |step, _| {
+            println!(
+                "Calculating step {} on thread {:?}",
+                step,
+                std::thread::current().id()
+            );
+            let mut result = FibonacciMatrix::new();
+            (0..((92 - STEPS + 1) / STEPS)).for_each(|_| {
+                result.step();
+            });
+            result
+        })
+        .map(|(_, mut results)| {
             println!("Reducing on thread {:?}", std::thread::current().id());
-            x.iter_mut()
+            results
+                .iter_mut()
                 .reduce(|acc, next| {
                     acc.multiply_assign(next);
                     acc

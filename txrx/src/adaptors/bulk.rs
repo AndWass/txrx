@@ -1,38 +1,38 @@
-use crate::traits::{Receiver, Sender, Work};
-use std::cell::UnsafeCell;
+use crate::priv_sync::Mutex;
+use crate::traits::{Receiver, Sender};
+use crate::utility::UnsafeSyncCell;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
-pub struct Bulk<InputSender, Func, ArgGenerator> {
-    input: InputSender,
+/// Sender for invoking a function with the values sent by the input sender multiple times.
+/// See [`bulk()`] for details.
+///
+/// [`bulk()`]: crate::SenderExt
+///
+pub struct Bulk<Input, Func> {
+    input: Input,
     size: usize,
     func: Func,
-    arg_generator: ArgGenerator,
 }
 
-impl<InputSender, Func, ArgGenerator> Bulk<InputSender, Func, ArgGenerator> {
+impl<Input, Func> Bulk<Input, Func> {
     #[inline]
-    pub fn new(input: InputSender, size: usize, arg_generator: ArgGenerator, func: Func) -> Self {
-        Self {
-            input,
-            size,
-            func,
-            arg_generator,
-        }
+    pub fn new(input: Input, size: usize, func: Func) -> Self {
+        Self { input, size, func }
     }
 }
 
-impl<InputSender, Func, ArgGenerator, BulkArgs> Sender for Bulk<InputSender, Func, ArgGenerator>
+impl<Input, Func, BulkOutput> Sender for Bulk<Input, Func>
 where
-    InputSender: Sender,
-    ArgGenerator: 'static + Send + Fn(usize, &mut InputSender::Output) -> BulkArgs,
-    Func: 'static + Send + Sync + Clone + Fn(usize, BulkArgs),
-    BulkArgs: 'static + Send,
+    Input: Sender,
+    Input::Output: 'static + Send + Sync,
+    Func: 'static + Clone + Send + Fn(usize, &Input::Output) -> BulkOutput,
+    BulkOutput: 'static + Send,
 {
-    type Output = InputSender::Output;
-    type Error = InputSender::Error;
-    type Scheduler = InputSender::Scheduler;
+    type Output = (Input::Output, Vec<BulkOutput>);
+    type Error = Input::Error;
+    type Scheduler = Input::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R)
@@ -40,14 +40,13 @@ where
         R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
     {
         let scheduler = self.input.get_scheduler();
-        self.input.start(BulkReceiver {
-            func: self.func,
-            amount: self.size,
-            next: receiver,
+        self.input.start(BulkReceiver::new(
             scheduler,
-            arg_generator: self.arg_generator,
-            _phantom: PhantomData,
-        });
+            receiver,
+            self.size,
+            self.func,
+            PhantomData::<Input::Output>,
+        ))
     }
 
     #[inline]
@@ -56,124 +55,150 @@ where
     }
 }
 
-pub struct BulkReceiver<R, Func, Scheduler, ArgGenerator, BulkArgs> {
-    func: Func,
-    amount: usize,
-    next: R,
+struct BulkReceiver<Scheduler, InputData, NextReceiver, Func, BulkOutput>
+where
+    Func: Fn(usize, &InputData) -> BulkOutput,
+{
     scheduler: Scheduler,
-    arg_generator: ArgGenerator,
-    _phantom: PhantomData<BulkArgs>,
+    next_receiver: NextReceiver,
+    bulk_function: Func,
+    size: usize,
+    _ph: PhantomData<InputData>,
 }
 
-impl<R, Func, Scheduler, ArgGenerator, BulkArgs> Receiver
-    for BulkReceiver<R, Func, Scheduler, ArgGenerator, BulkArgs>
+impl<Scheduler, InputData, NextReceiver, Func, BulkOutput>
+    BulkReceiver<Scheduler, InputData, NextReceiver, Func, BulkOutput>
 where
-    R: 'static + Send + Receiver,
-    R::Input: Send,
-    ArgGenerator: 'static + Send + Fn(usize, &mut R::Input) -> BulkArgs,
-    Func: 'static + Clone + Send + Sync + Fn(usize, BulkArgs),
-    Scheduler: crate::traits::Scheduler,
-    BulkArgs: 'static + Send,
-    BulkWork<Func, R, BulkArgs>: Work,
+    Func: Fn(usize, &InputData) -> BulkOutput,
 {
-    type Input = R::Input;
-    type Error = R::Error;
+    #[inline]
+    fn new(
+        scheduler: Scheduler,
+        next_receiver: NextReceiver,
+        size: usize,
+        bulk_function: Func,
+        _ph: PhantomData<InputData>,
+    ) -> Self {
+        Self {
+            scheduler,
+            next_receiver,
+            bulk_function,
+            size,
+            _ph,
+        }
+    }
+}
+
+impl<Scheduler, InputData, NextReceiver, Func, BulkOutput> Receiver
+    for BulkReceiver<Scheduler, InputData, NextReceiver, Func, BulkOutput>
+where
+    Scheduler: crate::traits::Scheduler,
+    InputData: 'static + Send + Sync,
+    Func: 'static + Clone + Send + Fn(usize, &InputData) -> BulkOutput,
+    NextReceiver: 'static + Send + Receiver<Input = (InputData, Vec<BulkOutput>)>,
+    BulkOutput: 'static + Send,
+{
+    type Input = InputData;
+    type Error = NextReceiver::Error;
 
     #[inline]
     fn set_value(mut self, value: Self::Input) {
-        if self.amount > 0 {
-            {
-                let end_reporter = Arc::new(EndReporter::new(self.amount, self.next, value));
+        if self.size != 0 {
+            let mut result_slots: Vec<Option<BulkOutput>> = Vec::with_capacity(self.size);
+            result_slots.resize_with(self.size, || None);
 
-                // End reporter will not touch value until
-                // all bulk work has completed. And all bulk work cannot complete until
-                // the last execute in this block function has finished. We have made sure to "release" the
-                // references at that point!
-                let (_, value) = unsafe { &mut *end_reporter.next.get() }.as_mut().unwrap();
+            // Safety: we move result_slots to the WorkEndBarrier, but the pointer obtained to the'
+            // underlying data is alive for as long as end_barrier is alive.
+            let result_slots_ptr = result_slots.as_mut_ptr();
+            let end_barrier =
+                WorkEndBarrier::new(self.size, value, self.next_receiver, result_slots);
 
-                let func = Arc::new(self.func);
-                for x in 0..self.amount - 1 {
-                    let work = BulkWork {
-                        input: (self.arg_generator)(x, value),
-                        step: x,
-                        func: func.clone(),
-                        end_reporter: end_reporter.clone(),
-                    };
+            for x in 0..self.size - 1 {
+                let end_barrier = end_barrier.clone();
+                // Safety:
+                //   We get a mut reference based on the bulk functions index. We never obtain
+                // multiple mut references to each result slot, only to different slots.
+                //
+                // The pointer is guaranteed to stay alive until end_barrier.signal() has been called
+                // size times and since execute takes FnOnce implementations we know that each function
+                // will only be invoked once.
+                let result_slot = unsafe { &mut *(result_slots_ptr.add(x)) };
+                let bulk_func = self.bulk_function.clone();
+                self.scheduler.execute(move || {
+                    // Safety:
+                    //   input_data is Sync, so it's valid to read the data accross threads.
+                    // We only form shared references to input data unless all functions have signaled
+                    // that they are complete. And since this function hasn't signaled completion yet,
+                    // we are good to go.
+                    let input_data = unsafe { &*end_barrier.input_data() };
 
-                    self.scheduler.execute(work);
-                }
-
-                BulkWork {
-                    input: (self.arg_generator)(self.amount - 1, value),
-                    step: self.amount - 1,
-                    func,
-                    end_reporter,
-                }
+                    *result_slot = Some(bulk_func(x, input_data));
+                    end_barrier.signal();
+                });
             }
-            .execute();
+
+            // See discussion on safety inside for loop.
+            let result_slot = unsafe { &mut *(result_slots_ptr.add(self.size - 1)) };
+            *result_slot = Some((self.bulk_function)(self.size - 1, unsafe {
+                end_barrier.input_data()
+            }));
+            end_barrier.signal();
         } else {
-            self.next.set_value(value)
+            self.next_receiver.set_value((value, Vec::new()));
         }
     }
 
     #[inline]
     fn set_error(self, error: Self::Error) {
-        self.next.set_error(error);
+        self.next_receiver.set_error(error);
     }
 
     #[inline]
     fn set_cancelled(self) {
-        self.next.set_cancelled();
+        self.next_receiver.set_cancelled();
     }
 }
 
-struct EndReporter<Next: Receiver> {
-    amount_left: AtomicUsize,
-    next: UnsafeCell<Option<(Next, Next::Input)>>,
+struct WorkEndBarrier<InputData, BulkResult, Next> {
+    input_data: UnsafeSyncCell<Option<InputData>>,
+    waiting_for: AtomicUsize,
+    next: Mutex<Option<(Next, Vec<Option<BulkResult>>)>>,
 }
 
-unsafe impl<Next: Receiver> Sync for EndReporter<Next> {}
-
-impl<Next: Receiver> EndReporter<Next> {
-    #[inline]
-    fn new(size: usize, next: Next, value: Next::Input) -> Self {
-        Self {
-            amount_left: AtomicUsize::new(size),
-            next: UnsafeCell::new(Some((next, value))),
-        }
-    }
-}
-
-impl<Next: Receiver> EndReporter<Next> {
-    #[inline]
-    fn work_ended(&self) {
-        let old = self.amount_left.fetch_sub(1, Ordering::AcqRel);
-        if old == 1 {
-            if let Some((next, value)) = unsafe { &mut *self.next.get() }.take() {
-                next.set_value(value);
-            }
-        }
-    }
-}
-
-pub struct BulkWork<Func, Next: Receiver, Input> {
-    func: Arc<Func>,
-    input: Input,
-    step: usize,
-
-    end_reporter: Arc<EndReporter<Next>>,
-}
-
-impl<Func, Next, Input> Work for BulkWork<Func, Next, Input>
+impl<InputData, BulkResult, Next> WorkEndBarrier<InputData, BulkResult, Next>
 where
-    Next: Receiver,
-    Func: Send + Sync + Fn(usize, Input),
-    Input: Send,
+    Next: Receiver<Input = (InputData, Vec<BulkResult>)>,
 {
     #[inline]
-    fn execute(self) {
-        (self.func)(self.step, self.input);
-        self.end_reporter.work_ended();
+    pub fn new(
+        size: usize,
+        input_data: InputData,
+        next: Next,
+        result_slots: Vec<Option<BulkResult>>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            input_data: UnsafeSyncCell::new(Some(input_data)),
+            waiting_for: AtomicUsize::new(size),
+            next: Mutex::new(Some((next, result_slots))),
+        })
+    }
+
+    #[inline]
+    unsafe fn input_data(&self) -> &InputData {
+        (&*self.input_data.get()).as_ref().unwrap()
+    }
+
+    #[inline]
+    pub fn signal(&self) {
+        let old_count = self.waiting_for.fetch_sub(1, Ordering::AcqRel);
+        if old_count == 1 {
+            let mut lock = self.next.lock();
+            if let Some((next, results)) = lock.take() {
+                let results: Vec<BulkResult> = results.into_iter().map(|x| x.unwrap()).collect();
+                let input_data = unsafe { (&mut *self.input_data.get()).take().unwrap() };
+                next.set_value((input_data, results));
+            }
+        }
     }
 }
 
@@ -188,7 +213,7 @@ mod tests {
         let fut = executor
             .scheduler()
             .schedule()
-            .bulk(2, |_, _| {}, |_step, _| {})
+            .bulk(2, |_step, _| {})
             .ensure_started();
         assert!(!fut.is_complete());
         assert!(executor.runner().run_one());
