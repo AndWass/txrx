@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["and",""],["and_then",""],["bulk",""],["ensure_started",""],["map",""],["transfer",""]]});
+initSidebarItems({"mod":[["and_then",""],["bulk",""],["ensure_started",""],["map",""],["transfer",""],["when_both",""]]});
