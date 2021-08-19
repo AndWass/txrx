@@ -2,14 +2,9 @@ use std::time::Duration;
 use txrx::traits::{Scheduler, Sender};
 use txrx::SenderExt;
 
-fn build_work<Sched>(
-    mut scheduler: Sched,
-    time: u64,
-    id: i32,
-) -> impl Sender<Output = i32, Error = ()>
+fn build_work<Sched>(mut scheduler: Sched, time: u64, id: i32) -> impl Sender<Output = i32>
 where
     Sched: Scheduler,
-    Sched::Sender: Sender<Error = ()>,
 {
     scheduler.schedule().map(move |_| {
         println!("Rayon {}: Starting some intensive work!", id);

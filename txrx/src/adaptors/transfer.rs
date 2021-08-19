@@ -17,12 +17,11 @@ where
     Sc: 'static + Send + Clone + Scheduler,
 {
     type Output = S::Output;
-    type Error = S::Error;
     type Scheduler = Sc;
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         self.input.start(TransferReceiver {
             next: receiver,
@@ -37,7 +36,7 @@ where
 
 pub struct TransferJob<Next: Receiver> {
     next: Next,
-    data: Result<Option<Next::Input>, Next::Error>,
+    data: crate::Result<Next::Input>,
 }
 
 impl<Next: Receiver> TransferJob<Next> {
@@ -48,7 +47,7 @@ impl<Next: Receiver> TransferJob<Next> {
         }
     }
 
-    fn error(next: Next, err: Next::Error) -> Self {
+    fn error(next: Next, err: crate::Error) -> Self {
         Self {
             next,
             data: Err(err),
@@ -85,16 +84,14 @@ where
     Next: 'static + Send + Receiver,
     SchedT: 'static + Send + Scheduler,
     Next::Input: 'static + Send,
-    Next::Error: 'static + Send,
 {
     type Input = Next::Input;
-    type Error = Next::Error;
 
     fn set_value(mut self, value: Self::Input) {
         self.scheduler.execute(TransferJob::value(self.next, value));
     }
 
-    fn set_error(mut self, error: Self::Error) {
+    fn set_error(mut self, error: crate::Error) {
         self.scheduler.execute(TransferJob::error(self.next, error));
     }
 

@@ -17,13 +17,12 @@ impl PoolScheduler {
 
 impl Sender for PoolScheduler {
     type Output = ();
-    type Error = ();
     type Scheduler = Self;
 
     #[inline]
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         self.pool.spawn(move || {
             receiver.set_value(());
@@ -75,13 +74,12 @@ impl Default for GlobalScheduler {
 
 impl Sender for GlobalScheduler {
     type Output = ();
-    type Error = ();
     type Scheduler = Self;
 
     #[inline]
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         rayon::spawn(move || {
             receiver.set_value(());

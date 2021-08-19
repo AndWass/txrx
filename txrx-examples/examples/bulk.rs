@@ -6,12 +6,11 @@ struct NewThreadScheduler;
 
 impl Sender for NewThreadScheduler {
     type Output = ();
-    type Error = ();
     type Scheduler = Self;
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         std::thread::spawn(move || receiver.set_value(()));
     }

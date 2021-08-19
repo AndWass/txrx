@@ -34,13 +34,12 @@ where
     Ret: 'static + Send,
 {
     type Output = Ret;
-    type Error = Src::Error;
     type Scheduler = Src::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + ReceiverT<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + ReceiverT<Input = Self::Output>,
     {
         self.sender.start(Receiver::new(receiver, self.func));
     }
@@ -57,7 +56,6 @@ where
     I: 'static + Send,
 {
     type Input = I;
-    type Error = Recv::Error;
 
     #[inline]
     fn set_value(self, value: Self::Input) {
@@ -65,7 +63,7 @@ where
     }
 
     #[inline]
-    fn set_error(self, error: Self::Error) {
+    fn set_error(self, error: crate::Error) {
         self.receiver.set_error(error);
     }
 

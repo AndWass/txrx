@@ -47,7 +47,7 @@ mod hidden {
     where
         Left: Sender,
         Right: Sender,
-        Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
+        Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output)>,
     {
         pub fn set_cancelled(&self) {
             let mut lock = self.state.lock();
@@ -57,7 +57,7 @@ mod hidden {
             }
         }
 
-        pub fn set_error(&self, error: Left::Error) {
+        pub fn set_error(&self, error: crate::Error) {
             let mut lock = self.state.lock();
             if let Some(next) = lock.next.take() {
                 drop(lock);
@@ -124,15 +124,13 @@ impl<Left, Right> Sender for WhenBoth<Left, Right>
 where
     Left: 'static + Sender,
     Right: 'static + Sender,
-    Right::Error: Into<Left::Error>,
 {
     type Output = (Left::Output, Right::Output);
-    type Error = Left::Error;
     type Scheduler = Left::Scheduler;
 
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         let scheduler = self.left.get_scheduler();
         let state = hidden::SharedState::<Left, Right, R>::new(receiver, scheduler);
@@ -159,16 +157,15 @@ impl<Left, Right, Next> Receiver for LeftReceiver<Left, Right, Next>
 where
     Left: Sender,
     Right: Sender,
-    Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
+    Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output)>,
 {
     type Input = Left::Output;
-    type Error = Left::Error;
 
     fn set_value(self, value: Self::Input) {
         self.state.set_value(Some(value), None);
     }
 
-    fn set_error(self, error: Self::Error) {
+    fn set_error(self, error: crate::Error) {
         self.state.set_error(error);
     }
 
@@ -185,18 +182,16 @@ impl<Left, Right, Next> Receiver for RightReceiver<Left, Right, Next>
 where
     Left: Sender,
     Right: Sender,
-    Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output), Error = Left::Error>,
-    Right::Error: Into<Left::Error>,
+    Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output)>,
 {
     type Input = Right::Output;
-    type Error = Right::Error;
 
     fn set_value(self, value: Self::Input) {
         self.state.set_value(None, Some(value));
     }
 
-    fn set_error(self, error: Self::Error) {
-        self.state.set_error(error.into());
+    fn set_error(self, error: crate::Error) {
+        self.state.set_error(error);
     }
 
     fn set_cancelled(self) {

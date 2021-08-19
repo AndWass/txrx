@@ -14,7 +14,6 @@ impl<R> ReceiverRef<R> {
 
 impl<R: Receiver> DynReceiver for ReceiverRef<R> {
     type Input = R::Input;
-    type Error = R::Error;
 
     fn dyn_set_value(&mut self, value: Self::Input) {
         if let Some(next) = self.next.take() {
@@ -22,7 +21,7 @@ impl<R: Receiver> DynReceiver for ReceiverRef<R> {
         }
     }
 
-    fn dyn_set_error(&mut self, error: Self::Error) {
+    fn dyn_set_error(&mut self, error: crate::Error) {
         if let Some(next) = self.next.take() {
             next.set_error(error);
         }

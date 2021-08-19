@@ -23,7 +23,7 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
         Map::new(self, func)
     }
 
-    fn sync_wait(self) -> crate::consumers::sync_wait::Result<Self::Output, Self::Error> {
+    fn sync_wait(self) -> crate::consumers::sync_wait::WaitResult<Self::Output> {
         crate::sync_wait(self)
     }
 
@@ -92,12 +92,11 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
     ///
     /// impl Sender for NewThreadScheduler {
     ///     type Output = ();
-    ///     type Error = ();
     ///     type Scheduler = Self;
     ///
     ///     fn start<R>(self, receiver: R)
     ///     where
-    ///         R: 'static + Send + Receiver<Input=Self::Output, Error=Self::Error>
+    ///         R: 'static + Send + Receiver<Input=Self::Output>
     ///     {
     ///         std::thread::spawn(move || { receiver.set_value(()) });
     ///     }

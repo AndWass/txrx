@@ -5,12 +5,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
-struct SharedStateData<T, E> {
+struct SharedStateData<T> {
     waker: Option<Waker>,
-    result: Option<Result<Option<T>, E>>,
+    result: Option<crate::Result<T>>,
 }
 
-impl<T, E> SharedStateData<T, E> {
+impl<T> SharedStateData<T> {
     fn new() -> Self {
         Self {
             waker: None,
@@ -27,7 +27,7 @@ impl<T, E> SharedStateData<T, E> {
         self.wakeup();
     }
 
-    fn set_error(&mut self, error: E) {
+    fn set_error(&mut self, error: crate::Error) {
         self.result = Some(Err(error));
         self.wakeup();
     }
@@ -38,11 +38,11 @@ impl<T, E> SharedStateData<T, E> {
     }
 }
 
-struct SharedState<T, E> {
-    data: Mutex<SharedStateData<T, E>>,
+struct SharedState<T> {
+    data: Mutex<SharedStateData<T>>,
 }
 
-impl<T, E> SharedState<T, E> {
+impl<T> SharedState<T> {
     fn new() -> Self {
         Self {
             data: Mutex::new(SharedStateData::new()),
@@ -50,25 +50,24 @@ impl<T, E> SharedState<T, E> {
     }
 }
 
-struct AwaitableReceiver<T, E> {
-    state: Arc<SharedState<T, E>>,
+struct AwaitableReceiver<T> {
+    state: Arc<SharedState<T>>,
 }
 
-impl<T, E> AwaitableReceiver<T, E> {
-    fn new(state: Arc<SharedState<T, E>>) -> Self {
+impl<T> AwaitableReceiver<T> {
+    fn new(state: Arc<SharedState<T>>) -> Self {
         Self { state }
     }
 }
 
-impl<T, E> Receiver for AwaitableReceiver<T, E> {
+impl<T> Receiver for AwaitableReceiver<T> {
     type Input = T;
-    type Error = E;
 
     fn set_value(self, value: Self::Input) {
         self.state.data.lock().set_value(value);
     }
 
-    fn set_error(self, error: Self::Error) {
+    fn set_error(self, error: crate::Error) {
         self.state.data.lock().set_error(error);
     }
 
@@ -78,7 +77,7 @@ impl<T, E> Receiver for AwaitableReceiver<T, E> {
 }
 
 pub struct Awaitable<S: Sender> {
-    shared_state: Arc<SharedState<S::Output, S::Error>>,
+    shared_state: Arc<SharedState<S::Output>>,
 }
 
 impl<S: Sender> Awaitable<S> {
@@ -90,7 +89,7 @@ impl<S: Sender> Awaitable<S> {
 }
 
 impl<S: Sender> std::future::Future for Awaitable<S> {
-    type Output = Result<Option<S::Output>, S::Error>;
+    type Output = crate::Result<S::Output>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let me = unsafe { self.get_unchecked_mut() };

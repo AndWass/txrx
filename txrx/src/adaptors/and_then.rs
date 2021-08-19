@@ -16,16 +16,15 @@ impl<NextSender, Input, Func> Sender for AndThen<Input, Func>
 where
     Input: Sender,
     Func: 'static + Send + FnOnce(Input::Output) -> NextSender,
-    NextSender: Sender<Error = Input::Error>,
+    NextSender: Sender,
 {
     type Output = NextSender::Output;
-    type Error = NextSender::Error;
     type Scheduler = Input::Scheduler;
 
     #[inline]
     fn start<R>(self, receiver: R)
     where
-        R: 'static + Send + Receiver<Input = Self::Output, Error = Self::Error>,
+        R: 'static + Send + Receiver<Input = Self::Output>,
     {
         self.input.start(AndThenReceiver::new(self.func, receiver));
     }
@@ -56,11 +55,10 @@ impl<Input, Func, NextReceiver, Ret> Receiver for AndThenReceiver<Input, Func, N
 where
     Func: FnOnce(Input) -> Ret,
     Ret: Sender,
-    NextReceiver: 'static + Send + Receiver<Input = Ret::Output, Error = Ret::Error>,
+    NextReceiver: 'static + Send + Receiver<Input = Ret::Output>,
     Input: 'static + Send,
 {
     type Input = Input;
-    type Error = NextReceiver::Error;
 
     #[inline]
     fn set_value(self, value: Self::Input) {
@@ -68,7 +66,7 @@ where
     }
 
     #[inline]
-    fn set_error(self, error: Self::Error) {
+    fn set_error(self, error: crate::Error) {
         self.next.set_error(error);
     }
 
