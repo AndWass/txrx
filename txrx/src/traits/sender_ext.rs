@@ -1,9 +1,9 @@
-use crate::adaptors::when_both::WhenBoth;
 use crate::adaptors::and_then::AndThen;
 use crate::adaptors::bulk::Bulk;
 use crate::adaptors::ensure_started::EnsureStarted;
 use crate::adaptors::map::Map;
 use crate::adaptors::transfer::Transfer;
+use crate::adaptors::when_both::WhenBoth;
 use crate::consumers::into_awaitable::Awaitable;
 use crate::traits::Sender;
 
