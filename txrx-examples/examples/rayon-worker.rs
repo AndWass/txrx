@@ -24,7 +24,7 @@ fn main() {
 
     let work = build_work(scheduler.clone(), 3, 1)
         .ensure_started()
-        .and(build_work(scheduler.clone(), 2, 2).ensure_started())
+        .when_both(build_work(scheduler.clone(), 2, 2).ensure_started())
         .ensure_started();
 
     while !work.is_complete() {

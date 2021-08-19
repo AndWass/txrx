@@ -72,10 +72,10 @@ fn build_work<Sched>(
     mut scheduler: Sched,
     time: u64,
     id: i32,
-) -> impl Sender<Output = i32, Error = ()>
-where
-    Sched: Scheduler,
-    Sched::Sender: Sender<Error = ()>,
+) -> impl Sender<Output=i32, Error=()>
+    where
+        Sched: Scheduler,
+        Sched::Sender: Sender<Error=()>,
 {
     scheduler.schedule().map(move |_| {
         println!("Rayon {}: Starting some intensive work!", id);
@@ -100,7 +100,7 @@ async fn async_main() {
 
     let work = build_work(scheduler.clone(), 3, 1)
         .ensure_started()
-        .and(build_work(scheduler.clone(), 2, 2).ensure_started());
+        .when_both(build_work(scheduler.clone(), 2, 2).ensure_started());
 
     println!("Rayon work started, launching timer task");
     let timer_task = async_std::task::spawn(timer_task());

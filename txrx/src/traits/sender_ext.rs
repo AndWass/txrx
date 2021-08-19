@@ -1,4 +1,4 @@
-use crate::adaptors::and::And;
+use crate::adaptors::when_both::WhenBoth;
 use crate::adaptors::and_then::AndThen;
 use crate::adaptors::bulk::Bulk;
 use crate::adaptors::ensure_started::EnsureStarted;
@@ -37,9 +37,25 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
         Transfer::new(self, scheduler)
     }
 
+    /// Returns a sender that completes when both the `self` sender and the `rhs` sender completes.
+    ///
+    /// The output type of the sender is `(Self::Output, Right::Output)`. The error type is
+    /// `Self::Error` and `Rhs::Error` must implement `Into<Self::Error>`. Scheduler is `Self::Scheduler`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use txrx::SenderExt;
+    /// let value = txrx::factories::just(10)
+    ///     .when_both(txrx::factories::just("hello"))
+    ///     .sync_wait()
+    ///     .unwrap();
+    ///
+    /// assert_eq!(value, (10, "hello"));
+    /// ```
     #[inline]
-    fn and<Right>(self, right: Right) -> And<Self, Right> {
-        And::new(self, right)
+    fn when_both<Rhs>(self, rhs: Rhs) -> WhenBoth<Self, Rhs> {
+        WhenBoth::new(self, rhs)
     }
 
     #[inline]

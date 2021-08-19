@@ -108,18 +108,19 @@ mod hidden {
     }
 }
 
-pub struct And<Left, Right> {
+/// See [`when_both()`](crate::SenderExt::when_both) for details.
+pub struct WhenBoth<Left, Right> {
     left: Left,
     right: Right,
 }
 
-impl<Left, Right> And<Left, Right> {
+impl<Left, Right> WhenBoth<Left, Right> {
     pub fn new(left: Left, right: Right) -> Self {
         Self { left, right }
     }
 }
 
-impl<Left, Right> Sender for And<Left, Right>
+impl<Left, Right> Sender for WhenBoth<Left, Right>
 where
     Left: 'static + Sender,
     Right: 'static + Sender,
@@ -214,7 +215,7 @@ mod tests {
     fn left_first() {
         let (left, left_trigger) = ManualSender::new();
         let (right, right_trigger) = ManualSender::new();
-        let fut = left.and(right).ensure_started();
+        let fut = left.when_both(right).ensure_started();
         assert!(!fut.is_complete());
         left_trigger.trigger();
         assert!(!fut.is_complete());
@@ -226,7 +227,7 @@ mod tests {
     fn right_first() {
         let (left, left_trigger) = ManualSender::new();
         let (right, right_trigger) = ManualSender::new();
-        let fut = left.and(right).ensure_started();
+        let fut = left.when_both(right).ensure_started();
         assert!(!fut.is_complete());
         right_trigger.trigger();
         assert!(!fut.is_complete());
@@ -243,7 +244,7 @@ mod tests {
             let fut = left
                 .scheduler()
                 .schedule()
-                .and(right.scheduler().schedule())
+                .when_both(right.scheduler().schedule())
                 .ensure_started();
 
             assert!(left.runner().run_one());
@@ -258,7 +259,7 @@ mod tests {
             let fut = left
                 .scheduler()
                 .schedule()
-                .and(right.scheduler().schedule())
+                .when_both(right.scheduler().schedule())
                 .ensure_started();
 
             assert!(right.runner().run_one());
