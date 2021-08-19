@@ -33,7 +33,7 @@ async fn async_main() {
 
     let work = build_work(scheduler.clone(), 3, 1)
         .ensure_started()
-        .and(build_work(scheduler.clone(), 2, 2).ensure_started());
+        .when_both(build_work(scheduler.clone(), 2, 2).ensure_started());
 
     println!("Rayon work started, launching timer task");
     let timer_task = async_std::task::spawn(timer_task());
