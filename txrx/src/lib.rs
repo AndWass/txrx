@@ -16,7 +16,7 @@ pub use consumers::sync_wait::sync_wait;
 pub use immediate_scheduler::ImmediateScheduler;
 pub use traits::SenderExt;
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 pub type Result<T> = std::result::Result<Option<T>, crate::Error>;
 
 #[cfg(test)]
