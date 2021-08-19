@@ -39,8 +39,7 @@ pub trait SenderExt: 'static + sealed::Sealed + Sender + Sized {
 
     /// Returns a sender that completes when both the `self` sender and the `rhs` sender completes.
     ///
-    /// The output type of the sender is `(Self::Output, Right::Output)`. The error type is
-    /// `Self::Error` and `Rhs::Error` must implement `Into<Self::Error>`. Scheduler is `Self::Scheduler`.
+    /// The output type of the sender is `(Self::Output, Right::Output)`. Scheduler is `Self::Scheduler`.
     ///
     /// ## Example
     ///
