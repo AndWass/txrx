@@ -154,7 +154,6 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
-<span id="157">157</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::adaptors::and_then::AndThen</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::adaptors::bulk::Bulk</span>;
@@ -197,8 +196,7 @@
 
     <span class="doccomment">/// Returns a sender that completes when both the `self` sender and the `rhs` sender completes.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// The output type of the sender is `(Self::Output, Right::Output)`. The error type is</span>
-    <span class="doccomment">/// `Self::Error` and `Rhs::Error` must implement `Into&lt;Self::Error&gt;`. Scheduler is `Self::Scheduler`.</span>
+    <span class="doccomment">/// The output type of the sender is `(Self::Output, Right::Output)`. Scheduler is `Self::Scheduler`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ## Example</span>
     <span class="doccomment">///</span>
