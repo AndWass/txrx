@@ -49,6 +49,11 @@ where
     }
 }
 
+pub fn on<Scheduler, Sender>(scheduler: Scheduler, sender: Sender) -> On<Scheduler, Sender>
+{
+    On::new(scheduler, sender)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

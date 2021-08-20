@@ -13,6 +13,9 @@ pub mod test;
 
 pub use consumers::start_detached::start_detached;
 pub use consumers::sync_wait::sync_wait;
+pub use factories::from_future;
+pub use factories::just;
+
 pub use immediate_scheduler::ImmediateScheduler;
 pub use traits::SenderExt;
 
@@ -23,7 +26,7 @@ pub type Result<T> = std::result::Result<Option<T>, crate::Error>;
 mod tests {
     use std::sync::Arc;
 
-    use crate::factories::just::Just;
+    use crate::factories::just_sender::Just;
     use crate::traits::Scheduler;
     use crate::{sync_wait, SenderExt};
 
