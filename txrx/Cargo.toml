@@ -9,6 +9,7 @@ edition = "2018"
 test = []
 
 [dependencies]
+either = { version="1.6", default-features=false }
 
 [dev-dependencies]
 txrx-rayon = { path = "../txrx-rayon" }
