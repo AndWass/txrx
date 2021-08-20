@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["from_future","Convert a future to a Sender."]],"struct":[["FutureSender","Sender to turn a future into a sender. See `from_future()` for more info."]]});

@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["done",""],["just",""]],"mod":[["done",""],["just",""],["on",""]]});
+initSidebarItems({"fn":[["done",""],["just",""]],"mod":[["done",""],["futures",""],["just",""],["on",""]]});
