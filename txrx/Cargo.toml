@@ -3,7 +3,8 @@ name = "txrx"
 version = "0.1.0"
 edition = "2018"
 description = "A Rust take on the C++ unified executors proposal"
-license = ""
+license = "MIT/Apache-2.0"
+repository = "https://github.com/AndWass/txrx"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
