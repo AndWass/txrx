@@ -121,7 +121,7 @@
     <span class="kw">fn</span> <span class="ident">map</span>() {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Just::new</span>(<span class="number">10</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">x</span>).<span class="ident">sync_wait</span>();
         <span class="macro">assert_eq!</span>(<span class="ident">res</span>.<span class="ident">unwrap</span>(), <span class="number">20</span>);
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::factories::done</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">1</span>).<span class="ident">sync_wait</span>();
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::factories::cancelled</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">1</span>).<span class="ident">sync_wait</span>();
         <span class="macro">assert!</span>(<span class="ident">res</span>.<span class="ident">is_cancelled</span>());
     }
 
