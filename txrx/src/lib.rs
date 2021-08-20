@@ -40,7 +40,7 @@ mod tests {
     fn map() {
         let res = Just::new(10).map(|x| 2 * x).sync_wait();
         assert_eq!(res.unwrap(), 20);
-        let res = crate::factories::done().map(|_| 1).sync_wait();
+        let res = crate::factories::cancelled().map(|_| 1).sync_wait();
         assert!(res.is_cancelled());
     }
 
