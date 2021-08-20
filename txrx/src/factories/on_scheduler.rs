@@ -49,8 +49,7 @@ where
     }
 }
 
-pub fn on<Scheduler, Sender>(scheduler: Scheduler, sender: Sender) -> On<Scheduler, Sender>
-{
+pub fn on<Scheduler, Sender>(scheduler: Scheduler, sender: Sender) -> On<Scheduler, Sender> {
     On::new(scheduler, sender)
 }
 
