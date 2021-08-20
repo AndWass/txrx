@@ -111,8 +111,7 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
-</pre><pre class="rust">
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::priv_sync::AsyncValue</span>;
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::priv_sync::AsyncValue</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
@@ -225,7 +224,7 @@
     <span class="ident">sender</span>.<span class="ident">start</span>(<span class="ident">Recv::new</span>(<span class="ident">Arc::clone</span>(<span class="kw-2">&amp;</span><span class="ident">state</span>)));
     <span class="ident">state</span>.<span class="ident">wait_result</span>()
 }
-</pre></div>
+</code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="txrx" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script>
 </body></html>

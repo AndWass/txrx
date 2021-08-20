@@ -99,8 +99,7 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-</pre><pre class="rust">
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Scheduler</span>, <span class="ident">Sender</span>, <span class="ident">Work</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Scheduler</span>, <span class="ident">Sender</span>, <span class="ident">Work</span>};
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Transfer</span><span class="op">&lt;</span><span class="ident">SenderT</span>, <span class="ident">SchedulerT</span><span class="op">&gt;</span> {
     <span class="ident">input</span>: <span class="ident">SenderT</span>,
@@ -201,7 +200,7 @@
         <span class="self">self</span>.<span class="ident">scheduler</span>.<span class="ident">execute</span>(<span class="ident">TransferJob::done</span>(<span class="self">self</span>.<span class="ident">next</span>));
     }
 }
-</pre></div>
+</code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="txrx" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script>
 </body></html>

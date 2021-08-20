@@ -220,8 +220,13 @@
 <span id="220">220</span>
 <span id="221">221</span>
 <span id="222">222</span>
-</pre><pre class="rust">
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::priv_sync::Mutex</span>;
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::priv_sync::Mutex</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utility::UnsafeSyncCell</span>;
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
@@ -351,7 +356,7 @@
                     <span class="comment">// We only form shared references to input data unless all functions have signaled</span>
                     <span class="comment">// that they are complete. And since this function hasn&#39;t signaled completion yet,</span>
                     <span class="comment">// we are good to go.</span>
-                    <span class="kw">let</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">end_barrier</span>.<span class="ident">input_data</span>() };
+                    <span class="kw">let</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">end_barrier</span>.<span class="ident">input_data</span>() };
 
                     <span class="kw-2">*</span><span class="ident">result_slot</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bulk_func</span>(<span class="ident">x</span>, <span class="ident">input_data</span>));
                     <span class="ident">end_barrier</span>.<span class="ident">signal</span>();
@@ -413,10 +418,16 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">old_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">waiting_for</span>.<span class="ident">fetch_sub</span>(<span class="number">1</span>, <span class="ident">Ordering::AcqRel</span>);
         <span class="kw">if</span> <span class="ident">old_count</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
+            <span class="comment">// This lock always succeeds.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next</span>.<span class="ident">lock</span>();
+
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">next</span>, <span class="ident">results</span>)) <span class="op">=</span> <span class="ident">lock</span>.<span class="ident">take</span>() {
                 <span class="kw">let</span> <span class="ident">results</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BulkResult</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">results</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">unwrap</span>()).<span class="ident">collect</span>();
+                <span class="comment">// Safety: We only get here once all bulk functions have completed, so no live references</span>
+                <span class="comment">// to input is in play.</span>
                 <span class="kw">let</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="kw">unsafe</span> { (<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">input_data</span>.<span class="ident">get</span>()).<span class="ident">take</span>().<span class="ident">unwrap</span>() };
+                <span class="comment">// drop lock so we don&#39;t run user code under lock.</span>
+                <span class="ident">drop</span>(<span class="ident">lock</span>);
                 <span class="ident">next</span>.<span class="ident">set_value</span>((<span class="ident">input_data</span>, <span class="ident">results</span>));
             }
         }
@@ -443,7 +454,7 @@
         <span class="macro">assert!</span>(<span class="ident">fut</span>.<span class="ident">is_complete</span>());
     }
 }
-</pre></div>
+</code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="txrx" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
     <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script>
 </body></html>
