@@ -76,6 +76,9 @@
 <span id="76">76</span>
 <span id="77">77</span>
 <span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">adaptors</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">consumers</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">factories</span>;
@@ -91,6 +94,9 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">consumers::start_detached::start_detached</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">consumers::sync_wait::sync_wait</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">factories::from_future</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">factories::just</span>;
+
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">immediate_scheduler::ImmediateScheduler</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">traits::SenderExt</span>;
 
@@ -101,7 +107,7 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::factories::just::Just</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::factories::just_sender::Just</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits::Scheduler</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">sync_wait</span>, <span class="ident">SenderExt</span>};
 

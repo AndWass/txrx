@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["done",""],["just",""]],"mod":[["done",""],["futures",""],["just",""],["on",""]]});
+initSidebarItems({"fn":[["done",""],["just","Create a sender that, when started, immediately sends its value to the receiver."]],"mod":[["done",""],["futures",""],["just_sender",""],["on_scheduler",""]]});

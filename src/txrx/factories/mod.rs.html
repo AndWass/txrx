@@ -12,15 +12,37 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">done</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">futures</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">just</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">on</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">just_sender</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">on_scheduler</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">futures::from_future</span>;
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">just</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">value</span>: <span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">just::Just</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="ident">just::Just::new</span>(<span class="ident">value</span>)
+<span class="doccomment">/// Create a sender that, when started, immediately sends its value to the receiver.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ## Examples</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Basic usage</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```</span>
+<span class="doccomment">/// use txrx::{just, SenderExt};</span>
+<span class="doccomment">/// let r = just(&quot;hello world&quot;).sync_wait().unwrap();</span>
+<span class="doccomment">/// assert_eq!(r, &quot;hello world&quot;);</span>
+<span class="doccomment">/// ```</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">just</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">value</span>: <span class="ident">T</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">just_sender::Just</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="ident">just_sender::Just::new</span>(<span class="ident">value</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">done</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">done::Done</span> {
