@@ -128,7 +128,7 @@ where
                     // We only form shared references to input data unless all functions have signaled
                     // that they are complete. And since this function hasn't signaled completion yet,
                     // we are good to go.
-                    let input_data = unsafe { &*end_barrier.input_data() };
+                    let input_data = unsafe { end_barrier.input_data() };
 
                     *result_slot = Some(bulk_func(x, input_data));
                     end_barrier.signal();
@@ -190,10 +190,16 @@ where
     pub fn signal(&self) {
         let old_count = self.waiting_for.fetch_sub(1, Ordering::AcqRel);
         if old_count == 1 {
+            // This lock always succeeds.
             let mut lock = self.next.lock();
+
             if let Some((next, results)) = lock.take() {
                 let results: Vec<BulkResult> = results.into_iter().map(|x| x.unwrap()).collect();
+                // Safety: We only get here once all bulk functions have completed, so no live references
+                // to input is in play.
                 let input_data = unsafe { (&mut *self.input_data.get()).take().unwrap() };
+                // drop lock so we don't run user code under lock.
+                drop(lock);
                 next.set_value((input_data, results));
             }
         }
