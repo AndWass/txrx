@@ -1,6 +1,35 @@
 use std::time::Duration;
-use txrx::traits::{Scheduler, Sender};
+use txrx::traits::{Receiver, Scheduler, Sender};
 use txrx::SenderExt;
+
+#[derive(Clone)]
+struct AsyncStdScheduler;
+
+impl Scheduler for AsyncStdScheduler {
+    type Sender = Self;
+
+    fn schedule(&mut self) -> Self::Sender {
+        Self
+    }
+}
+
+impl Sender for AsyncStdScheduler {
+    type Output = ();
+    type Scheduler = Self;
+
+    fn start<R>(self, receiver: R)
+    where
+        R: 'static + Send + Receiver<Input = Self::Output>,
+    {
+        async_std::task::spawn(async move {
+            receiver.set_value(());
+        });
+    }
+
+    fn get_scheduler(&self) -> Self::Scheduler {
+        Self
+    }
+}
 
 fn build_work<Sched>(mut scheduler: Sched, time: u64, id: i32) -> impl Sender<Output = i32>
 where
@@ -22,7 +51,21 @@ async fn timer_task() {
 }
 
 async fn async_main() {
-    println!("Async hello world!");
+    println!("Async hello world! {:?}", std::thread::current().name());
+
+    AsyncStdScheduler
+        .schedule()
+        .map(|_| {
+            println!(
+                "Running function inside {:?}",
+                std::thread::current().name()
+            );
+        })
+        .into_awaitable()
+        .await
+        .unwrap();
+
+    println!("Starting rayon work!");
 
     let scheduler = txrx_rayon::GlobalScheduler::new();
 
@@ -42,5 +85,5 @@ async fn async_main() {
 }
 
 fn main() {
-    async_std::task::block_on(async_main());
+    async_std::task::block_on(async_std::task::spawn(async_main()));
 }
