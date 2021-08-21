@@ -264,6 +264,16 @@
 <span id="264">264</span>
 <span id="265">265</span>
 <span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::traits</span>::{<span class="ident">Receiver</span>, <span class="ident">Sender</span>};
 
 <span class="kw">mod</span> <span class="ident">hidden</span> {
@@ -315,19 +325,29 @@
         <span class="ident">Right</span>: <span class="ident">Sender</span>,
         <span class="ident">Next</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Input</span> <span class="op">=</span> (<span class="ident">Left::Output</span>, <span class="ident">Right::Output</span>)<span class="op">&gt;</span>,
     {
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">use_scheduler</span>: <span class="ident">bool</span>) {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">lock</span>();
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">next</span>) <span class="op">=</span> <span class="ident">lock</span>.<span class="ident">next</span>.<span class="ident">take</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scheduler</span> <span class="op">=</span> <span class="ident">lock</span>.<span class="ident">scheduler</span>.<span class="ident">clone</span>();
                 <span class="ident">drop</span>(<span class="ident">lock</span>);
-                <span class="ident">next</span>.<span class="ident">set_cancelled</span>();
+                <span class="kw">if</span> <span class="ident">use_scheduler</span> {
+                    <span class="ident">scheduler</span>.<span class="ident">execute</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">next</span>.<span class="ident">set_cancelled</span>());
+                } <span class="kw">else</span> {
+                    <span class="ident">next</span>.<span class="ident">set_cancelled</span>();
+                }
             }
         }
 
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>, <span class="ident">use_scheduler</span>: <span class="ident">bool</span>) {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">lock</span>();
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">next</span>) <span class="op">=</span> <span class="ident">lock</span>.<span class="ident">next</span>.<span class="ident">take</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scheduler</span> <span class="op">=</span> <span class="ident">lock</span>.<span class="ident">scheduler</span>.<span class="ident">clone</span>();
                 <span class="ident">drop</span>(<span class="ident">lock</span>);
-                <span class="ident">next</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
+                <span class="kw">if</span> <span class="ident">use_scheduler</span> {
+                    <span class="ident">scheduler</span>.<span class="ident">execute</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">next</span>.<span class="ident">set_error</span>(<span class="ident">error</span>));
+                } <span class="kw">else</span> {
+                    <span class="ident">next</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
+                }
             }
         }
 
@@ -432,11 +452,11 @@
     }
 
     <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
-        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
+        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>, <span class="bool-val">false</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_cancelled</span>();
+        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_cancelled</span>(<span class="bool-val">false</span>);
     }
 }
 
@@ -457,11 +477,11 @@
     }
 
     <span class="kw">fn</span> <span class="ident">set_error</span>(<span class="self">self</span>, <span class="ident">error</span>: <span class="ident"><span class="kw">crate</span>::Error</span>) {
-        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>);
+        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_error</span>(<span class="ident">error</span>, <span class="bool-val">true</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">set_cancelled</span>(<span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_cancelled</span>();
+        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">set_cancelled</span>(<span class="bool-val">true</span>);
     }
 }
 
