@@ -49,19 +49,29 @@ mod hidden {
         Right: Sender,
         Next: 'static + Send + Receiver<Input = (Left::Output, Right::Output)>,
     {
-        pub fn set_cancelled(&self) {
+        pub fn set_cancelled(&self, use_scheduler: bool) {
             let mut lock = self.state.lock();
             if let Some(next) = lock.next.take() {
+                let mut scheduler = lock.scheduler.clone();
                 drop(lock);
-                next.set_cancelled();
+                if use_scheduler {
+                    scheduler.execute(move || next.set_cancelled());
+                } else {
+                    next.set_cancelled();
+                }
             }
         }
 
-        pub fn set_error(&self, error: crate::Error) {
+        pub fn set_error(&self, error: crate::Error, use_scheduler: bool) {
             let mut lock = self.state.lock();
             if let Some(next) = lock.next.take() {
+                let mut scheduler = lock.scheduler.clone();
                 drop(lock);
-                next.set_error(error);
+                if use_scheduler {
+                    scheduler.execute(move || next.set_error(error));
+                } else {
+                    next.set_error(error);
+                }
             }
         }
 
@@ -166,11 +176,11 @@ where
     }
 
     fn set_error(self, error: crate::Error) {
-        self.state.set_error(error);
+        self.state.set_error(error, false);
     }
 
     fn set_cancelled(self) {
-        self.state.set_cancelled();
+        self.state.set_cancelled(false);
     }
 }
 
@@ -191,11 +201,11 @@ where
     }
 
     fn set_error(self, error: crate::Error) {
-        self.state.set_error(error);
+        self.state.set_error(error, true);
     }
 
     fn set_cancelled(self) {
-        self.state.set_cancelled();
+        self.state.set_cancelled(true);
     }
 }
 
